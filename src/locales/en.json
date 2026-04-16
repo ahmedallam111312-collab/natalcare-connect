@@ -1,0 +1,101 @@
+{
+  "app": {
+    "name": "Natal Care Connect",
+    "welcome": "Welcome back"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "symptoms": "Symptoms Tracker",
+    "vitals": "Daily Vitals",
+    "labs": "Lab Results",
+    "medications": "Medications",
+    "hospitals": "Hospitals",
+    "settings": "Settings",
+    "patients": "Patients",
+    "alerts": "Priority Alerts",
+    "analytics": "Analytics",
+    "chat": "Chat",
+    "templates": "Templates",
+    "scheduling": "Scheduling",
+    "ultrasound": "Ultrasound OCR",
+    "doctors": "Doctors",
+    "labCategories": "Lab Categories"
+  },
+  "auth": {
+    "signIn": "Sign In",
+    "signUp": "Create Account",
+    "email": "Email",
+    "password": "Password",
+    "fullName": "Full Name",
+    "noAccount": "Don't have an account?",
+    "hasAccount": "Already have an account?",
+    "register": "Register",
+    "signingIn": "Signing in...",
+    "creatingAccount": "Creating account..."
+  },
+  "patient": {
+    "gestationalWeek": "Gestational Week",
+    "bloodPressure": "Blood Pressure",
+    "bloodSugar": "Blood Sugar",
+    "weight": "Weight",
+    "kickCounter": "Kick Counter",
+    "kicksRecorded": "kicks recorded",
+    "goalReached": "Goal reached! 10+ kicks",
+    "nextAppointment": "Next Appointment",
+    "recordVitals": "Record Today's Vitals",
+    "saveVitals": "Save Vitals",
+    "bpTrend": "Blood Pressure Trend",
+    "recentRecords": "Recent Records",
+    "addMedication": "Add Medication",
+    "markAsTaken": "Mark as Taken",
+    "adherence": "Adherence",
+    "dosage": "Dosage",
+    "reminders": "Reminders"
+  },
+  "doctor": {
+    "activePatients": "Active Patients",
+    "highRisk": "High Risk",
+    "todaysVisits": "Today's Visits",
+    "avgRiskScore": "Avg Risk Score",
+    "recentAlerts": "Recent Alerts",
+    "todaysSchedule": "Today's Schedule",
+    "patientList": "Patient List",
+    "acknowledge": "Acknowledge",
+    "riskDistribution": "Risk Distribution",
+    "monthlyVisits": "Monthly Visits"
+  },
+  "nurse": {
+    "totalPatients": "Total Patients",
+    "todaysAppointments": "Today's Appointments",
+    "pendingScans": "Pending Scans",
+    "vitalsRecorded": "Vitals Recorded",
+    "uploadImage": "Upload Image",
+    "extractedData": "Extracted Data",
+    "saveToRecord": "Save to Patient Record"
+  },
+  "admin": {
+    "manageHospitals": "Manage Hospitals",
+    "manageDoctors": "Manage Doctors",
+    "manageLabCategories": "Lab Categories",
+    "addHospital": "Add Hospital",
+    "addDoctor": "Add Doctor",
+    "addCategory": "Add Category"
+  },
+  "common": {
+    "save": "Save Changes",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "search": "Search...",
+    "active": "Active",
+    "inactive": "Inactive",
+    "profile": "Profile",
+    "language": "Language",
+    "normal": "Normal",
+    "abnormal": "Abnormal",
+    "critical": "Critical",
+    "low": "Low",
+    "moderate": "Moderate",
+    "high": "High"
+  }
+}

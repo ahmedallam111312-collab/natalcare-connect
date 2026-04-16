@@ -1,0 +1,101 @@
+{
+  "app": {
+    "name": "رعاية الأمومة",
+    "welcome": "مرحباً بعودتك"
+  },
+  "nav": {
+    "dashboard": "لوحة القيادة",
+    "symptoms": "متتبع الأعراض",
+    "vitals": "العلامات الحيوية",
+    "labs": "نتائج المختبر",
+    "medications": "الأدوية",
+    "hospitals": "المستشفيات",
+    "settings": "الإعدادات",
+    "patients": "المرضى",
+    "alerts": "التنبيهات العاجلة",
+    "analytics": "التحليلات",
+    "chat": "المحادثة",
+    "templates": "القوالب",
+    "scheduling": "الجدولة",
+    "ultrasound": "تحليل الموجات",
+    "doctors": "الأطباء",
+    "labCategories": "فئات المختبر"
+  },
+  "auth": {
+    "signIn": "تسجيل الدخول",
+    "signUp": "إنشاء حساب",
+    "email": "البريد الإلكتروني",
+    "password": "كلمة المرور",
+    "fullName": "الاسم الكامل",
+    "noAccount": "ليس لديك حساب؟",
+    "hasAccount": "لديك حساب بالفعل؟",
+    "register": "تسجيل",
+    "signingIn": "جاري تسجيل الدخول...",
+    "creatingAccount": "جاري إنشاء الحساب..."
+  },
+  "patient": {
+    "gestationalWeek": "أسبوع الحمل",
+    "bloodPressure": "ضغط الدم",
+    "bloodSugar": "سكر الدم",
+    "weight": "الوزن",
+    "kickCounter": "عداد الركلات",
+    "kicksRecorded": "ركلات مسجلة",
+    "goalReached": "تم تحقيق الهدف! +10 ركلات",
+    "nextAppointment": "الموعد القادم",
+    "recordVitals": "تسجيل العلامات الحيوية اليوم",
+    "saveVitals": "حفظ العلامات",
+    "bpTrend": "اتجاه ضغط الدم",
+    "recentRecords": "السجلات الأخيرة",
+    "addMedication": "إضافة دواء",
+    "markAsTaken": "تم أخذه",
+    "adherence": "الالتزام",
+    "dosage": "الجرعة",
+    "reminders": "التذكيرات"
+  },
+  "doctor": {
+    "activePatients": "المرضى النشطون",
+    "highRisk": "خطر عالي",
+    "todaysVisits": "زيارات اليوم",
+    "avgRiskScore": "متوسط المخاطر",
+    "recentAlerts": "التنبيهات الأخيرة",
+    "todaysSchedule": "جدول اليوم",
+    "patientList": "قائمة المرضى",
+    "acknowledge": "تم الاطلاع",
+    "riskDistribution": "توزيع المخاطر",
+    "monthlyVisits": "الزيارات الشهرية"
+  },
+  "nurse": {
+    "totalPatients": "إجمالي المرضى",
+    "todaysAppointments": "مواعيد اليوم",
+    "pendingScans": "فحوصات معلقة",
+    "vitalsRecorded": "علامات حيوية مسجلة",
+    "uploadImage": "رفع صورة",
+    "extractedData": "البيانات المستخرجة",
+    "saveToRecord": "حفظ في سجل المريض"
+  },
+  "admin": {
+    "manageHospitals": "إدارة المستشفيات",
+    "manageDoctors": "إدارة الأطباء",
+    "manageLabCategories": "فئات المختبر",
+    "addHospital": "إضافة مستشفى",
+    "addDoctor": "إضافة طبيب",
+    "addCategory": "إضافة فئة"
+  },
+  "common": {
+    "save": "حفظ التغييرات",
+    "cancel": "إلغاء",
+    "delete": "حذف",
+    "edit": "تعديل",
+    "search": "بحث...",
+    "active": "نشط",
+    "inactive": "غير نشط",
+    "profile": "الملف الشخصي",
+    "language": "اللغة",
+    "normal": "طبيعي",
+    "abnormal": "غير طبيعي",
+    "critical": "حرج",
+    "low": "منخفض",
+    "moderate": "متوسط",
+    "high": "مرتفع"
+  }
+}
