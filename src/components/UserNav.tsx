@@ -1,4 +1,4 @@
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"; // <-- أضفنا AvatarImage
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -21,13 +21,12 @@ export default function UserNav() {
   const handleLogout = async () => {
     try {
       await signOut(auth);
-      navigate("/login"); // سيتم التوجيه لصفحة تسجيل الدخول
+      navigate("/login"); 
     } catch (error) {
       console.error("Error signing out: ", error);
     }
   };
 
-  // تحديد لون الأيقونة حسب دور المستخدم
   const role = (user as any)?.role || "patient";
   let bgClass = "bg-primary text-primary-foreground";
   if (role === "admin") bgClass = "bg-accent text-accent-foreground";
@@ -38,6 +37,7 @@ export default function UserNav() {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-8 w-8 rounded-full border border-border/50">
           <Avatar className="h-8 w-8">
+            <AvatarImage src={(user as any)?.photoURL} className="object-cover" />
             <AvatarFallback className={`${bgClass} text-xs font-bold`}>
               {user?.displayName?.charAt(0) || "U"}
             </AvatarFallback>
