@@ -37,7 +37,7 @@ export function NurseSidebar() {
           <div className="w-9 h-9 rounded-xl bg-secondary flex items-center justify-center shrink-0">
             <Baby className="w-5 h-5 text-secondary-foreground" />
           </div>
-          {!collapsed && <span className="font-heading font-bold text-lg">بوابة التمريض</span>}
+          {!collapsed && <span className="font-heading font-bold text-lg">عيادة الدكتور شعبان</span>}
         </div>
         <SidebarGroup>
           <SidebarGroupLabel>قائمة الرعاية</SidebarGroupLabel>

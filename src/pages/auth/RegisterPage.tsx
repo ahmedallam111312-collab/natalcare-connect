@@ -50,7 +50,7 @@ export default function RegisterPage() {
             <Baby className="w-8 h-8 text-primary-foreground" />
           </div>
           <h1 className="text-3xl font-heading font-bold">إنشاء حساب</h1>
-          <p className="text-muted-foreground text-sm mt-2">انضمي إلى منصة رعاية الأمومة</p>
+          <p className="text-muted-foreground text-sm mt-2">انضمي إلى منصة عيادة الدكتور شعبان</p>
         </div>
 
         <Card className="glass-card">

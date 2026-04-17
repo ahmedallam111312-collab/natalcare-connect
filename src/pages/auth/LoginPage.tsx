@@ -45,7 +45,7 @@ export default function LoginPage() {
           <div className="w-14 h-14 rounded-2xl bg-primary flex items-center justify-center mx-auto mb-4">
             <Baby className="w-8 h-8 text-primary-foreground" />
           </div>
-          <h1 className="text-3xl font-heading font-bold gradient-text">رعاية الأمومة</h1>
+          <h1 className="text-3xl font-heading font-bold gradient-text">عيادة الدكتور شعبان</h1>
           <p className="text-muted-foreground text-sm mt-2">قم بتسجيل الدخول إلى حسابك</p>
         </div>
 
