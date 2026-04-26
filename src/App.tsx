@@ -45,6 +45,7 @@ import AdminSettings from "@/pages/admin/AdminSettings";
 import NotFound from "./pages/NotFound";
 import PatientChat from "@/pages/patient/PatientChat";
 import PatientOnboarding from "@/pages/patient/PatientOnboarding";
+import DoctorPrescriptions from "@/pages/doctor/DoctorPrescriptions";
 const queryClient = new QueryClient();
 
 const App = () => {
@@ -100,12 +101,15 @@ const App = () => {
               <Route path="settings" element={<PatientSettings />} />
               <Route path="/patient/onboarding" element={<PatientOnboarding />} />
             </Route>
-
             <Route path="/doctor" element={<ProtectedRoute allowedRoles={["doctor"]}><DoctorLayout /></ProtectedRoute>}>
-              <Route index element={<DoctorDashboard />} /><Route path="patients" element={<PatientsList />} />
-              <Route path="alerts" element={<PriorityAlerts />} /><Route path="analytics" element={<DoctorAnalytics />} />
-              <Route path="chat" element={<DoctorChat />} /><Route path="templates" element={<CommunicationTemplates />} />
+              <Route index element={<DoctorDashboard />} />
+              <Route path="patients" element={<PatientsList />} />
+              <Route path="alerts" element={<PriorityAlerts />} />
+              <Route path="analytics" element={<DoctorAnalytics />} />
+              <Route path="chat" element={<DoctorChat />} />
+              <Route path="templates" element={<CommunicationTemplates />} />
               <Route path="settings" element={<DoctorSettings />} />
+              <Route path="prescriptions" element={<DoctorPrescriptions />} />
             </Route>
 
             <Route path="/nurse" element={<ProtectedRoute allowedRoles={["nurse"]}><NurseLayout /></ProtectedRoute>}>

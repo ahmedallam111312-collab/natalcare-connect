@@ -10,6 +10,7 @@ const navItems = [
   { title: "لوحة التحكم", url: "/doctor", icon: LayoutDashboard },
   { title: "المرضى", url: "/doctor/patients", icon: Users },
   { title: "التنبيهات العاجلة", url: "/doctor/alerts", icon: Bell },
+  { title: "الروشتات", url: "/doctor/prescriptions", icon: FileText },
   { title: "التحليلات", url: "/doctor/analytics", icon: BarChart3 },
   { title: "المحادثات", url: "/doctor/chat", icon: MessageSquare },
   { title: "قوالب الرسائل", url: "/doctor/templates", icon: FileText },
