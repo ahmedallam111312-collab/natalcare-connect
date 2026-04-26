@@ -210,7 +210,7 @@ export default function DoctorPrescriptions() {
           frequency: med.frequency,
           notes: med.notes,
           prescribedAt: serverTimestamp(),
-          prescribedBy: "د. أحمد شعبان",
+          prescribedBy: "dr.mohamed shaban", // يمكن استبداله بالاسم الحقيقي للطبيب من بيانات المستخدم
           reminders: true, // تفعيل التذكيرات للمريضة
           adherence: 100, // نسبة الالتزام الافتراضية
           takenDates: [], // مصفوفة الأيام التي تم أخذ الدواء فيها
@@ -330,7 +330,7 @@ export default function DoctorPrescriptions() {
               <h1 className="text-lg font-bold text-slate-800 rx-heading leading-tight">
                 نظام الروشتة الإلكترونية الذكية
               </h1>
-              <p className="text-xs text-slate-400">عيادة الدكتور شعبان – رعاية ما قبل الولادة</p>
+              <p className="text-xs text-slate-400">عيادة الدكتور mohamed shaban – رعاية ما قبل الولادة</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -552,9 +552,9 @@ export default function DoctorPrescriptions() {
                       <span className="text-emerald-200 text-xs font-medium tracking-wide">عيادة رعاية الحمل والولادة</span>
                     </div>
                     <h1 className="rx-heading text-3xl font-bold text-white leading-tight">
-                      عيادة الدكتور شعبان
+                     عيادة الدكتور mohamed shaban
                     </h1>
-                    <p className="text-emerald-300 text-sm mt-1">د. أحمد شعبان – استشاري أمراض النساء والتوليد</p>
+                    <p className="text-emerald-300 text-sm mt-1">dr.mohamed shaban – استشاري أمراض النساء والتوليد</p>
                     <div className="flex items-center gap-4 mt-3">
                       <span className="text-emerald-200 text-xs">📍 القاهرة، مصر</span>
                       <span className="text-emerald-200 text-xs">📞 01xxxxxxxxx</span>
@@ -680,7 +680,7 @@ export default function DoctorPrescriptions() {
                       style={{ background: "linear-gradient(90deg, transparent, #94a3b8, transparent)" }}
                     />
                     <p className="text-xs text-slate-500">توقيع الطبيب</p>
-                    <p className="text-sm font-bold text-slate-700 rx-heading mt-0.5">د. أحمد شعبان</p>
+                    <p className="text-sm font-bold text-slate-700 rx-heading mt-0.5">dr.mohamed shaban</p>
                   </div>
                   <div className="text-center text-xs text-slate-400">
                     <div className="w-12 h-12 rounded-xl border-2 border-dashed border-slate-200 flex items-center justify-center mx-auto mb-1">
