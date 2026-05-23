@@ -187,10 +187,20 @@ export default function LoginPage() {
                       : "تسجيل الدخول"}
                 </Button>
               </form>
-              <div className="mt-4 text-center text-sm text-muted-foreground">
-                ليس لديك حساب؟{" "}
-                <button onClick={() => navigate("/register")} className="text-primary hover:underline font-medium">
-                  إنشاء حساب
+              <div className="mt-4 text-center text-sm text-muted-foreground flex flex-col gap-2">
+                <div>
+                  ليس لديك حساب؟{" "}
+                  <button onClick={() => navigate("/register")} className="text-primary hover:underline font-medium">
+                    إنشاء حساب
+                  </button>
+                </div>
+                <div className="relative my-2">
+                  <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-muted"></span></div>
+                  <div className="relative flex justify-center text-xs uppercase"><span className="bg-background px-2 text-muted-foreground">أو</span></div>
+                </div>
+                <button onClick={() => toast.info("ميزة الدخول كشريك ستتوفر قريباً! (قيد التطوير)")} className="text-foreground hover:text-primary transition-colors font-bold border border-border rounded-lg py-2 flex justify-center items-center gap-2">
+                  <Lock className="w-4 h-4" />
+                  الدخول كشريك (بكود الدعوة)
                 </button>
               </div>
             </CardContent>
