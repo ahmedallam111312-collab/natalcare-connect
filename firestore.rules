@@ -22,6 +22,11 @@ service cloud.firestore {
       let role = getUserRole();
       return role == 'doctor' || role == 'nurse' || role == 'admin';
     }
+    
+    function isPartnerOf(patientId) {
+      let pDoc = get(/databases/$(database)/documents/users/$(request.auth.uid));
+      return isAuthenticated() && pDoc != null && pDoc.data.linkedPatientId == patientId;
+    }
 
     match /users/{userId} {
       allow read: if isAuthenticated();
@@ -37,7 +42,8 @@ service cloud.firestore {
         allow read, write: if isOwner(userId) || isStaff();
       }
       match /appointments/{document=**} {
-        allow read, write: if isOwner(userId) || isStaff();
+        allow read: if isOwner(userId) || isStaff() || isPartnerOf(userId);
+        allow write: if isOwner(userId) || isStaff();
       }
       match /fmcReports/{document=**} {
         allow read, write: if isOwner(userId) || isStaff();
