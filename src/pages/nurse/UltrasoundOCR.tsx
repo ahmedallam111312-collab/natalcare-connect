@@ -8,8 +8,7 @@ import { ScanLine, Upload, Loader2, Save, FileText, BrainCircuit } from "lucide-
 import { collection, query, where, getDocs, addDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/services/firebase";
 import { toast } from "sonner";
-import Tesseract from "tesseract.js";
-import { sendSymptomChat } from "@/services/aiService"; 
+import { analyzeUltrasoundImage } from "@/services/aiService";
 
 export default function UltrasoundOCR() {
   const [loadingState, setLoadingState] = useState<"idle" | "ocr" | "ai">("idle");
@@ -52,93 +51,51 @@ export default function UltrasoundOCR() {
     setFormData({ fhr: "", efw: "", afi: "", ga: "", bpd: "", hc: "", ac: "", fl: "", flBpd: "", ci: "", hcAc: "", flAc: "", notes: "" });
     setRawOcrText("");
 
-    try {
-      // 1. الاستخراج المحلي (Offline OCR)
-      setLoadingState("ocr");
-      toast.info("جاري فحص الصورة محلياً...");
-
-      const result = await Tesseract.recognize(file, 'eng', {
-        logger: m => console.log(m)
-      });
-
-      const extractedText = result.data.text;
-      setRawOcrText(extractedText);
-
-      if (!extractedText.trim()) {
-        toast.error("لم يتم العثور على نص واضح في الصورة.");
-        setLoadingState("idle");
-        return;
-      }
-
-      // 2. الفهم الذكي والاستخراج (AI Parsing)
+      // 1. تحويل الصورة إلى Base64
       setLoadingState("ai");
       toast.info("جاري تحليل القياسات الطبية بالذكاء الاصطناعي...");
 
-      const aiPrompt = [
-        {
-          role: "system",
-          content: `أنت طبيب خبير في قراءة تقارير الموجات فوق الصوتية (Ultrasound Biometry).
-          تم استخراج هذا النص من صورة باستخدام OCR. رتب القيم المطلوبة فقط.
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        try {
+          const base64String = reader.result as string;
+          const parsedData = await analyzeUltrasoundImage(base64String);
           
-          القواعد:
-          1. استخرج القيم وضعها مع وحداتها (مثلاً: 14 mm, 28 weeks, 1.2 kg).
-          2. إذا لم تجد القيمة، اتركها فارغة "".
-          3. الرد يجب أن يكون بصيغة JSON فقط، بالهيكل التالي:
-          \`\`\`json
-          {
-            "fhr": "نبض الجنين (FHR)",
-            "efw": "الوزن التقديري (EFW)",
-            "afi": "كمية السائل (AFI)",
-            "ga": "عمر الجنين (GA)",
-            "bpd": "BPD",
-            "hc": "HC",
-            "ac": "AC",
-            "fl": "FL",
-            "flBpd": "FL/BPD",
-            "ci": "Cephalic index",
-            "hcAc": "HC/AC",
-            "flAc": "FL/AC",
-            "notes": "أي ملاحظات عامة"
-          }
-          \`\`\``
-        },
-        {
-          role: "user",
-          content: `النص المستخرج: \n\n${extractedText}`
+          setFormData({
+            fhr: parsedData.fhr || "",
+            efw: parsedData.efw || "",
+            afi: parsedData.afi || "",
+            ga: parsedData.ga || "",
+            bpd: parsedData.bpd || "",
+            hc: parsedData.hc || "",
+            ac: parsedData.ac || "",
+            fl: parsedData.fl || "",
+            flBpd: parsedData.flBpd || "",
+            ci: parsedData.ci || "",
+            hcAc: parsedData.hcAc || "",
+            flAc: parsedData.flAc || "",
+            notes: parsedData.notes || ""
+          });
+          setRawOcrText(JSON.stringify(parsedData, null, 2)); // Save raw JSON output for reference
+          toast.success("تم استخراج وتحليل القياسات الحيوية بنجاح!");
+        } catch (error: any) {
+          console.error("Analysis Error:", error);
+          toast.error(error.message || "فشل التحليل الذكي. يمكنك إدخال البيانات يدوياً.");
+        } finally {
+          setLoadingState("idle");
         }
-      ];
+      };
 
-      // @ts-ignore
-      const aiResponse = await sendSymptomChat(aiPrompt);
-      
-      const jsonMatch = aiResponse.match(/```json\s*([\s\S]*?)\s*```/) || aiResponse.match(/\{[\s\S]*\}/);
-      
-      if (jsonMatch) {
-        const parsedData = JSON.parse(jsonMatch[0].replace(/```json/g, "").replace(/```/g, ""));
-        setFormData({
-          fhr: parsedData.fhr || "",
-          efw: parsedData.efw || "",
-          afi: parsedData.afi || "",
-          ga: parsedData.ga || "",
-          bpd: parsedData.bpd || "",
-          hc: parsedData.hc || "",
-          ac: parsedData.ac || "",
-          fl: parsedData.fl || "",
-          flBpd: parsedData.flBpd || "",
-          ci: parsedData.ci || "",
-          hcAc: parsedData.hcAc || "",
-          flAc: parsedData.flAc || "",
-          notes: parsedData.notes || ""
-        });
-        toast.success("تم استخراج وتحليل القياسات الحيوية بنجاح!");
-      } else {
-        throw new Error("لم يتم إرجاع JSON صحيح");
-      }
+      reader.onerror = () => {
+        toast.error("فشل في قراءة ملف الصورة.");
+        setLoadingState("idle");
+      };
+
+      reader.readAsDataURL(file);
 
     } catch (error) {
-      console.error("Analysis Error:", error);
-      toast.error("تم استخراج النص لكن فشل التحليل الذكي. يمكنك إدخال البيانات يدوياً.");
-    } finally {
+      console.error("Upload Error:", error);
+      toast.error("حدث خطأ أثناء معالجة الصورة.");
       setLoadingState("idle");
     }
   };
@@ -227,10 +184,8 @@ export default function UltrasoundOCR() {
                 <Input type="file" accept="image/*" className="hidden" onChange={handleUpload} disabled={loadingState !== "idle"} />
                 <Button variant="outline" asChild disabled={loadingState !== "idle"}>
                   <span className="cursor-pointer min-w-[150px] flex justify-center">
-                    {loadingState === "ocr" ? (
-                      <><Loader2 className="ml-2 h-4 w-4 animate-spin" /> قراءة الصورة...</>
-                    ) : loadingState === "ai" ? (
-                      <><BrainCircuit className="ml-2 h-4 w-4 animate-pulse text-primary" /> استخراج القياسات...</>
+                    {loadingState === "ai" ? (
+                      <><BrainCircuit className="ml-2 h-4 w-4 animate-pulse text-primary" /> استخراج القياسات بالذكاء الاصطناعي...</>
                     ) : (
                       <><Upload className="ml-2 h-4 w-4" /> رفع الصورة</>
                     )}

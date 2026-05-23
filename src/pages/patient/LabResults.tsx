@@ -10,8 +10,7 @@ import { collection, query, onSnapshot, orderBy, addDoc, serverTimestamp } from 
 import { db } from "@/services/firebase";
 import { useAuthStore } from "@/stores/authStore";
 import { toast } from "sonner";
-import Tesseract from "tesseract.js";
-import { sendSymptomChat } from "@/services/aiService";
+import { analyzeLabResultsImage } from "@/services/aiService";
 
 const statusBadge = (status: string) => {
   if (status === "normal" || status === "Normal" || status === "طبيعي")
@@ -48,58 +47,40 @@ export default function LabResults() {
 
     setExtractedLabs([]);
 
-    try {
-      // 1. قراءة الصورة
-      setLoadingState("ocr");
-      toast.info("جاري قراءة الصورة محلياً...");
-      const result = await Tesseract.recognize(file, 'eng');
-      const text = result.data.text;
-
-      if (!text.trim()) {
-        toast.error("لم يتم العثور على نص واضح.");
-        setLoadingState("idle");
-        return;
-      }
-
-      // 2. تحليل الذكاء الاصطناعي
+      // 1. تحويل الصورة إلى Base64
       setLoadingState("ai");
       toast.info("جاري تحليل النتائج بالذكاء الاصطناعي...");
 
-      const aiPrompt = [
-        {
-          role: "system",
-          content: `أنت طبيب مختبر. استخرج نتائج التحاليل من النص التالي.
-          أرجع الرد بصيغة JSON فقط عبارة عن مصفوفة تحتوي على الكائنات التالية:
-          \`\`\`json
-          [
-            {
-              "testName": "اسم التحليل",
-              "value": "النتيجة والأرقام",
-              "unit": "الوحدة",
-              "referenceRange": "المعدل الطبيعي",
-              "status": "normal أو abnormal"
-            }
-          ]
-          \`\`\``
-        },
-        { role: "user", content: text }
-      ];
-
-      const aiResponse = await sendSymptomChat(aiPrompt);
-      const jsonMatch = aiResponse.match(/```json\s*([\s\S]*?)\s*```/) || aiResponse.match(/\[[\s\S]*\]/);
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        try {
+          const base64String = reader.result as string;
+          // 2. تحليل الذكاء الاصطناعي (Vision Model)
+          const parsedData = await analyzeLabResultsImage(base64String);
+          
+          if (parsedData && Array.isArray(parsedData) && parsedData.length > 0) {
+            setExtractedLabs(parsedData);
+            toast.success("تم تحليل النتائج بنجاح!");
+          } else {
+            toast.error("لم يتم العثور على بيانات واضحة في الصورة.");
+          }
+        } catch (error: any) {
+          console.error(error);
+          toast.error(error.message || "حدث خطأ أثناء تحليل الصورة.");
+        } finally {
+          setLoadingState("idle");
+        }
+      };
       
-      if (jsonMatch) {
-        const parsedData = JSON.parse(jsonMatch[0].replace(/```json/g, "").replace(/```/g, ""));
-        setExtractedLabs(parsedData);
-        toast.success("تم تحليل النتائج بنجاح!");
-      } else {
-        throw new Error("تنسيق غير صالح");
-      }
-      setLoadingState("idle");
-
+      reader.onerror = () => {
+        toast.error("فشل في قراءة ملف الصورة.");
+        setLoadingState("idle");
+      };
+      
+      reader.readAsDataURL(file);
     } catch (error) {
       console.error(error);
-      toast.error("حدث خطأ أثناء تحليل الصورة.");
+      toast.error("حدث خطأ أثناء رفع الصورة.");
       setLoadingState("idle");
     }
   };
@@ -166,8 +147,7 @@ export default function LabResults() {
                 <Input type="file" accept="image/*" className="hidden" onChange={handleUpload} disabled={loadingState !== "idle"} />
                 <Button size="lg" variant="outline" asChild disabled={loadingState !== "idle"} className="cursor-pointer h-32 w-full border-dashed border-2 flex flex-col gap-2 bg-muted/20 hover:bg-muted/50">
                   <span>
-                    {loadingState === "ocr" ? <><Loader2 className="h-8 w-8 animate-spin mb-2 text-primary" /> قراءة الصورة محلياً...</> : 
-                     loadingState === "ai" ? <><BrainCircuit className="h-8 w-8 animate-pulse text-primary mb-2" /> استخراج النتائج...</> : 
+                    {loadingState === "ai" ? <><BrainCircuit className="h-8 w-8 animate-pulse text-primary mb-2" /> استخراج النتائج بالذكاء الاصطناعي...</> : 
                      <><Upload className="h-8 w-8 text-muted-foreground mb-2" /> اضغطي هنا لاختيار صورة التحليل</>}
                   </span>
                 </Button>

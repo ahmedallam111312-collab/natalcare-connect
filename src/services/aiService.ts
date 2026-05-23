@@ -111,11 +111,11 @@ Return ONLY a valid JSON object in the exact following format, with no markdown 
 export async function analyzeUltrasoundImage(
   imageBase64: string
 ): Promise<Record<string, string>> {
-  const prompt = `You are a medical AI assistant analyzing ultrasound or medical lab reports.
-Analyze the provided image and extract any relevant medical metrics such as Gestational Age, Fetal Weight, Heart Rate, Position, or any other visible medical values.
-Return the extracted metrics as a simple flat JSON key-value pair object (all keys and values must be strings in Arabic when appropriate, e.g., "عمر الجنين", "نبض القلب").
-Do not include any extra text, markdown formatting, or explanations. ONLY return the JSON object.
-If the image is not a medical report or no metrics are visible, return {"ملاحظة": "لم يتم العثور على بيانات طبية واضحة في الصورة"}.`;
+  const prompt = `You are a medical AI assistant analyzing an ultrasound biometry report.
+Analyze the provided image and extract the measurements.
+Return the extracted metrics as a JSON object with EXACTLY these keys:
+"fhr" (Fetal Heart Rate), "efw" (Estimated Fetal Weight), "afi" (Amniotic Fluid Index), "ga" (Gestational Age), "bpd" (Biparietal Diameter), "hc" (Head Circumference), "ac" (Abdominal Circumference), "fl" (Femur Length), "flBpd" (FL/BPD ratio), "ci" (Cephalic Index), "hcAc" (HC/AC ratio), "flAc" (FL/AC ratio), "notes" (General notes).
+If a value is not found, return an empty string "" for that key. Do not include any extra text, markdown formatting, or explanations. ONLY return the JSON object.`;
 
   try {
     const response = await fetch(GROQ_API_URL, {
@@ -135,7 +135,7 @@ If the image is not a medical report or no metrics are visible, return {"ملا�
             ]
           }
         ],
-        temperature: 0.2,
+        temperature: 0.1,
       }),
     });
 
@@ -144,15 +144,81 @@ If the image is not a medical report or no metrics are visible, return {"ملا�
     let resultContent = data.choices[0]?.message?.content || "{}";
     
     // Clean up potential markdown formatting that the model might incorrectly return
-    if (resultContent.startsWith("```json")) {
-      resultContent = resultContent.replace(/```json/g, "").replace(/```/g, "").trim();
+    if (resultContent.includes("\`\`\`")) {
+      const match = resultContent.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+      if (match) {
+        resultContent = match[1];
+      }
     }
     
     return JSON.parse(resultContent);
   } catch (error) {
     console.error("AI Vision Analysis Error:", error);
-    return {
-      "خطأ": "تعذر تحليل الصورة حالياً بواسطة الذكاء الاصطناعي."
-    };
+    throw new Error("تعذر تحليل الصورة حالياً بواسطة الذكاء الاصطناعي.");
+  }
+}
+
+export async function analyzeLabResultsImage(
+  imageBase64: string
+): Promise<Array<{ testName: string; value: string; unit: string; referenceRange: string; status: "normal" | "abnormal" }>> {
+  const prompt = `You are an expert medical lab technician AI.
+Analyze the provided image of a medical lab report. Extract all the test results from the table.
+Return ONLY a valid JSON array of objects. Do not include markdown formatting, code blocks, or extra text.
+Each object must have exactly these keys:
+- "testName": The name of the test (e.g. "WBC", "Hemoglobin")
+- "value": The extracted numeric result (e.g. "9.2")
+- "unit": The unit of measurement (e.g. "x 10^3/uL", "g/dL")
+- "referenceRange": The normal reference range (e.g. "4.3-10.3")
+- "status": Either "normal" or "abnormal" based on whether the value falls within the reference range.
+
+Example format:
+[
+  {
+    "testName": "Hemoglobin",
+    "value": "12.4",
+    "unit": "g/dL",
+    "referenceRange": "13-18",
+    "status": "abnormal"
+  }
+]`;
+
+  try {
+    const response = await fetch(GROQ_API_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${GROQ_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "llama-3.2-90b-vision-preview",
+        messages: [
+          {
+            role: "user",
+            content: [
+              { type: "text", text: prompt },
+              { type: "image_url", image_url: { url: imageBase64 } }
+            ]
+          }
+        ],
+        temperature: 0.1,
+      }),
+    });
+
+    if (!response.ok) throw new Error("Groq Vision API error");
+    const data: GroqResponse = await response.json();
+    let resultContent = data.choices[0]?.message?.content || "[]";
+    
+    // Clean up potential markdown formatting
+    if (resultContent.includes("\`\`\`")) {
+      const match = resultContent.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+      if (match) {
+        resultContent = match[1];
+      }
+    }
+    
+    return JSON.parse(resultContent);
+  } catch (error) {
+    console.error("AI Lab Vision Analysis Error:", error);
+    throw new Error("فشل الذكاء الاصطناعي في قراءة التحليل، يرجى التأكد من وضوح الصورة.");
   }
 }
