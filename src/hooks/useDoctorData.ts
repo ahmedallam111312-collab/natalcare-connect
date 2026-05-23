@@ -26,11 +26,10 @@ export function useDoctorData(doctorId: string | undefined) {
 
     setIsLoading(true);
 
-    // 1. Fetch Patients assigned to this doctor
+    // 1. Fetch ALL Patients in the clinic
     const qPatients = query(
       collection(db, "users"), 
-      where("role", "==", "patient"),
-      where("assignedDoctorId", "==", doctorId)
+      where("role", "==", "patient")
     );
     const unsubPatients = onSnapshot(qPatients, (snap) => {
       const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
