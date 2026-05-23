@@ -99,7 +99,7 @@ service cloud.firestore {
     }
     
     // Allow querying the code without being logged in
-    match /{path=**}/partnerAccess/{document=**} {
+    match /{path=**}/partnerAccess/{document} {
       allow read: if true;
     }
     
