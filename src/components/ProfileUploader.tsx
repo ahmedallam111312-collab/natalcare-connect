@@ -12,7 +12,7 @@ import { toast } from "sonner";
 const IMGBB_API_KEY = import.meta.env.VITE_IMGBB_API_KEY;
 
 export default function ProfileUploader() {
-  const { user } = useAuthStore();
+  const { user, setUser } = useAuthStore();
   const [isUploading, setIsUploading] = useState(false);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -62,6 +62,9 @@ export default function ProfileUploader() {
       await updateDoc(doc(db, "users", user.uid), {
         photoURL: imageUrl
       });
+
+      // 6. تحديث الحالة في المتصفح لكي تتغير الصورة فوراً في كل مكان
+      setUser({ ...user, photoURL: imageUrl });
 
       toast.success("تم تحديث الصورة الشخصية بنجاح! ✓");
     } catch (error) {
