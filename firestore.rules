@@ -1,0 +1,87 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function getUserRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+    
+    function hasRole(role) {
+      return isAuthenticated() && getUserRole() == role;
+    }
+    
+    function isStaff() {
+      let role = getUserRole();
+      return role == 'doctor' || role == 'nurse' || role == 'admin';
+    }
+
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if isOwner(userId) || hasRole('admin');
+      
+      match /vitals/{document=**} {
+        allow read, write: if isOwner(userId) || isStaff();
+      }
+      match /medications/{document=**} {
+        allow read, write: if isOwner(userId) || isStaff();
+      }
+      match /labs/{document=**} {
+        allow read, write: if isOwner(userId) || isStaff();
+      }
+      match /appointments/{document=**} {
+        allow read, write: if isOwner(userId) || isStaff();
+      }
+      match /fmcReports/{document=**} {
+        allow read, write: if isOwner(userId) || isStaff();
+      }
+    }
+    
+    match /chats/{chatId}/messages/{messageId} {
+      // allow read/write if the user's uid is part of the chatId
+      allow read, write: if isAuthenticated() && chatId.matches('.*' + request.auth.uid + '.*');
+    }
+    
+    match /alerts/{alertId} {
+      allow read: if isStaff() || (isAuthenticated() && resource.data.patientId == request.auth.uid);
+      allow create: if isAuthenticated();
+      allow update, delete: if hasRole('doctor') || hasRole('admin');
+    }
+    
+    match /templates/{templateId} {
+      allow read, write: if hasRole('doctor') && resource.data.doctorId == request.auth.uid;
+      allow create: if hasRole('doctor') && request.resource.data.doctorId == request.auth.uid;
+    }
+    
+    match /hospitals/{hospitalId} {
+      allow read: if isAuthenticated();
+      allow write: if hasRole('admin');
+    }
+    
+    match /labCategories/{categoryId} {
+      allow read: if isAuthenticated();
+      allow write: if hasRole('admin');
+    }
+    
+    match /settings/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if hasRole('admin');
+    }
+    
+    match /error_logs/{logId} {
+      allow create: if isAuthenticated();
+      allow read: if hasRole('admin');
+    }
+    
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

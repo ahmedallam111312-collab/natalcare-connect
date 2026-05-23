@@ -9,7 +9,7 @@ import { useAuthStore } from "@/stores/authStore";
 import { toast } from "sonner";
 
 // ضعي مفتاح ImgBB هنا
-const IMGBB_API_KEY = "3cfa3cc628ca9a7bccac6edd73e9286f"; 
+const IMGBB_API_KEY = import.meta.env.VITE_IMGBB_API_KEY; 
 
 export default function ProfileUploader() {
   const { user } = useAuthStore();
@@ -18,6 +18,13 @@ export default function ProfileUploader() {
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
+
+    // التحقق من صيغة الصورة
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error("صيغة الصورة غير مدعومة. يرجى استخدام JPEG أو PNG أو WebP");
+      return;
+    }
 
     // التحقق من حجم الصورة (أقصى حجم 2 ميجابايت لسرعة الرفع)
     if (file.size > 2 * 1024 * 1024) {

@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
+import { BrowserRouter, Route, Routes, Navigate, useLocation } from "react-router-dom";
 import { onAuthStateChanged } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "@/services/firebase";
@@ -10,6 +10,9 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import "@/lib/i18n";
+import OfflineBanner from "@/components/OfflineBanner";
+import PageTransition from "@/components/animations/PageTransition";
+import { AnimatePresence } from "framer-motion";
 
 // Page imports...
 import LoginPage from "@/pages/auth/LoginPage";
@@ -46,7 +49,65 @@ import NotFound from "./pages/NotFound";
 import PatientChat from "@/pages/patient/PatientChat";
 import PatientOnboarding from "@/pages/patient/PatientOnboarding";
 import DoctorPrescriptions from "@/pages/doctor/DoctorPrescriptions";
+
 const queryClient = new QueryClient();
+
+// Create a wrapper component for routes so we can use useLocation
+const AnimatedRoutes = () => {
+  const location = useLocation();
+  
+  return (
+    <AnimatePresence mode="wait">
+      <Routes location={location} key={location.pathname}>
+        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="/login" element={<PageTransition><LoginPage /></PageTransition>} />
+        <Route path="/register" element={<PageTransition><RegisterPage /></PageTransition>} />
+        
+        {/* Portals with Guards */}
+        <Route path="/patient" element={<ProtectedRoute allowedRoles={["patient"]}><PatientLayout /></ProtectedRoute>}>
+          <Route index element={<PageTransition><PatientDashboard /></PageTransition>} />
+          <Route path="symptoms" element={<PageTransition><SymptomsTracker /></PageTransition>} />
+          <Route path="chat" element={<PageTransition><PatientChat /></PageTransition>} />
+          <Route path="vitals" element={<PageTransition><DailyVitals /></PageTransition>} />
+          <Route path="labs" element={<PageTransition><LabResults /></PageTransition>} />
+          <Route path="medications" element={<PageTransition><Medications /></PageTransition>} />
+          <Route path="hospitals" element={<PageTransition><Hospitals /></PageTransition>} />
+          <Route path="settings" element={<PageTransition><PatientSettings /></PageTransition>} />
+          <Route path="onboarding" element={<PageTransition><PatientOnboarding /></PageTransition>} />
+        </Route>
+        
+        <Route path="/doctor" element={<ProtectedRoute allowedRoles={["doctor"]}><DoctorLayout /></ProtectedRoute>}>
+          <Route index element={<PageTransition><DoctorDashboard /></PageTransition>} />
+          <Route path="patients" element={<PageTransition><PatientsList /></PageTransition>} />
+          <Route path="alerts" element={<PageTransition><PriorityAlerts /></PageTransition>} />
+          <Route path="analytics" element={<PageTransition><DoctorAnalytics /></PageTransition>} />
+          <Route path="chat" element={<PageTransition><DoctorChat /></PageTransition>} />
+          <Route path="templates" element={<PageTransition><CommunicationTemplates /></PageTransition>} />
+          <Route path="settings" element={<PageTransition><DoctorSettings /></PageTransition>} />
+          <Route path="prescriptions" element={<PageTransition><DoctorPrescriptions /></PageTransition>} />
+        </Route>
+
+        <Route path="/nurse" element={<ProtectedRoute allowedRoles={["nurse"]}><NurseLayout /></ProtectedRoute>}>
+          <Route index element={<PageTransition><NurseDashboard /></PageTransition>} />
+          <Route path="patients" element={<PageTransition><NursePatientDirectory /></PageTransition>} />
+          <Route path="scheduling" element={<PageTransition><NurseScheduling /></PageTransition>} />
+          <Route path="ultrasound" element={<PageTransition><UltrasoundOCR /></PageTransition>} />
+          <Route path="settings" element={<PageTransition><NurseSettings /></PageTransition>} />
+        </Route>
+
+        <Route path="/admin" element={<ProtectedRoute allowedRoles={["admin"]}><AdminLayout /></ProtectedRoute>}>
+          <Route index element={<PageTransition><AdminDashboard /></PageTransition>} />
+          <Route path="hospitals" element={<PageTransition><ManageHospitals /></PageTransition>} />
+          <Route path="doctors" element={<PageTransition><ManageDoctors /></PageTransition>} />
+          <Route path="lab-categories" element={<PageTransition><ManageLabCategories /></PageTransition>} />
+          <Route path="settings" element={<PageTransition><AdminSettings /></PageTransition>} />
+        </Route>
+        
+        <Route path="*" element={<PageTransition><NotFound /></PageTransition>} />
+      </Routes>
+    </AnimatePresence>
+  );
+};
 
 const App = () => {
   const { setUser, setLoading, isLoading } = useAuthStore();
@@ -85,47 +146,10 @@ const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
+        <OfflineBanner />
         <Toaster /><Sonner />
         <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Navigate to="/login" replace />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
-            
-            {/* Portals with Guards */}
-            <Route path="/patient" element={<ProtectedRoute allowedRoles={["patient"]}><PatientLayout /></ProtectedRoute>}>
-              <Route index element={<PatientDashboard />} /><Route path="symptoms" element={<SymptomsTracker />} />
-              <Route path="chat" element={<PatientChat />} />
-              <Route path="vitals" element={<DailyVitals />} /><Route path="labs" element={<LabResults />} />
-              <Route path="medications" element={<Medications />} /><Route path="hospitals" element={<Hospitals />} />
-              <Route path="settings" element={<PatientSettings />} />
-              <Route path="/patient/onboarding" element={<PatientOnboarding />} />
-            </Route>
-            <Route path="/doctor" element={<ProtectedRoute allowedRoles={["doctor"]}><DoctorLayout /></ProtectedRoute>}>
-              <Route index element={<DoctorDashboard />} />
-              <Route path="patients" element={<PatientsList />} />
-              <Route path="alerts" element={<PriorityAlerts />} />
-              <Route path="analytics" element={<DoctorAnalytics />} />
-              <Route path="chat" element={<DoctorChat />} />
-              <Route path="templates" element={<CommunicationTemplates />} />
-              <Route path="settings" element={<DoctorSettings />} />
-              <Route path="prescriptions" element={<DoctorPrescriptions />} />
-            </Route>
-
-            <Route path="/nurse" element={<ProtectedRoute allowedRoles={["nurse"]}><NurseLayout /></ProtectedRoute>}>
-              <Route index element={<NurseDashboard />} /><Route path="patients" element={<NursePatientDirectory />} />
-              <Route path="scheduling" element={<NurseScheduling />} /><Route path="ultrasound" element={<UltrasoundOCR />} />
-              <Route path="settings" element={<NurseSettings />} />
-            </Route>
-
-            <Route path="/admin" element={<ProtectedRoute allowedRoles={["admin"]}><AdminLayout /></ProtectedRoute>}>
-              <Route index element={<AdminDashboard />} /><Route path="hospitals" element={<ManageHospitals />} />
-              <Route path="doctors" element={<ManageDoctors />} /><Route path="lab-categories" element={<ManageLabCategories />} />
-              <Route path="settings" element={<AdminSettings />} />
-            </Route>
-            
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <AnimatedRoutes />
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>
