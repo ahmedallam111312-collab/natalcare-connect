@@ -79,6 +79,10 @@ service cloud.firestore {
       allow read: if hasRole('admin');
     }
     
+    match /{path=**}/appointments/{appointmentId} {
+      allow read: if isStaff();
+    }
+    
     match /{document=**} {
       allow read, write: if false;
     }
