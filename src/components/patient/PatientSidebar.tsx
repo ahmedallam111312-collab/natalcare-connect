@@ -6,28 +6,52 @@ import { auth } from "@/services/firebase";
 import { toast } from "sonner";
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from "@/components/ui/sidebar";
 
-const navItems = [
-  { title: "الرئيسية", url: "/patient", icon: LayoutDashboard },
-  { title: "رحلة الحمل", url: "/patient/journey", icon: CalendarHeart },
-  { title: "تجهيزات الولادة", url: "/patient/birth-plan", icon: ClipboardList },
-  { title: "متتبع الانقباضات", url: "/patient/contractions", icon: Activity },
-  { title: "مخطط التغذية", url: "/patient/nutrition", icon: Utensils },
-  { title: "الصحة النفسية", url: "/patient/mental-health", icon: BrainCircuit },
-  { title: "متتبع الأعراض", url: "/patient/symptoms", icon: MessageCircle },
-  { title: "تواصل مع الطبيب", url: "/patient/chat", icon: MessageSquare },
-  { title: "المؤشرات اليومية", url: "/patient/vitals", icon: Activity },
-  { title: "النتائج المخبرية", url: "/patient/labs", icon: FlaskConical },
-  { title: "الأدوية", url: "/patient/medications", icon: Pill },
-  { title: "مشاركة الشريك", url: "/patient/partner", icon: Users },
-  { title: "المستشفيات", url: "/patient/hospitals", icon: Building2 },
-  { title: "الإعدادات", url: "/patient/settings", icon: Settings },
+const navGroups = [
+  {
+    label: "نظرة عامة",
+    items: [
+      { title: "الرئيسية", url: "/patient", icon: LayoutDashboard },
+      { title: "رحلة الحمل", url: "/patient/journey", icon: CalendarHeart },
+    ]
+  },
+  {
+    label: "الصحة والمتابعة",
+    items: [
+      { title: "المؤشرات اليومية", url: "/patient/vitals", icon: Activity },
+      { title: "النتائج المخبرية", url: "/patient/labs", icon: FlaskConical },
+      { title: "الأدوية", url: "/patient/medications", icon: Pill },
+      { title: "متتبع الأعراض", url: "/patient/symptoms", icon: MessageCircle },
+    ]
+  },
+  {
+    label: "نمط الحياة والدعم",
+    items: [
+      { title: "مخطط التغذية", url: "/patient/nutrition", icon: Utensils },
+      { title: "الصحة النفسية", url: "/patient/mental-health", icon: BrainCircuit },
+      { title: "تواصل مع الطبيب", url: "/patient/chat", icon: MessageSquare },
+      { title: "مشاركة الشريك", url: "/patient/partner", icon: Users },
+    ]
+  },
+  {
+    label: "الاستعداد للولادة",
+    items: [
+      { title: "تجهيزات الولادة", url: "/patient/birth-plan", icon: ClipboardList },
+      { title: "متتبع الانقباضات", url: "/patient/contractions", icon: Activity },
+    ]
+  },
+  {
+    label: "إعدادات النظام",
+    items: [
+      { title: "المستشفيات المعتمدة", url: "/patient/hospitals", icon: Building2 },
+      { title: "الإعدادات", url: "/patient/settings", icon: Settings },
+    ]
+  }
 ];
 
 export function PatientSidebar() {
-  const { state } = useSidebar();
-  const collapsed = state === "collapsed";
   const location = useLocation();
   const navigate = useNavigate();
+  const { setOpenMobile } = useSidebar();
 
   const handleLogout = async () => {
     try {
@@ -40,37 +64,59 @@ export function PatientSidebar() {
   };
 
   return (
-    <Sidebar side="right" collapsible="icon" className="border-l border-border" dir="rtl">
-      <SidebarContent>
-        <div className="p-4 flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center shrink-0">
-            <Baby className="w-5 h-5 text-primary-foreground" />
+    <Sidebar side="right" variant="sidebar" collapsible="icon">
+      <SidebarContent className="bg-card">
+        <div className="flex items-center gap-3 p-4 border-b border-border/50">
+          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+            <Baby className="w-6 h-6 text-primary" />
           </div>
-          {!collapsed && <span className="font-heading font-bold text-lg">عيادة الدكتور محمد شعبان</span>}
+          <div className="flex flex-col group-data-[collapsible=icon]:hidden overflow-hidden">
+            <span className="font-heading font-bold text-lg truncate">عيادة الحمل</span>
+            <span className="text-xs text-muted-foreground truncate">د. محمد شعبان</span>
+          </div>
         </div>
-        <SidebarGroup>
-          <SidebarGroupLabel>القائمة الرئيسية</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {navItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild isActive={location.pathname === item.url}>
-                    <NavLink to={item.url} end={item.url === "/patient"}>
-                      <item.icon className="ml-2" />
-                      <span>{item.title}</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+
+        <div className="py-2">
+          {navGroups.map((group, groupIdx) => (
+            <SidebarGroup key={groupIdx} className="pt-2">
+              <SidebarGroupLabel className="px-4 text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
+                {group.label}
+              </SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {group.items.map((item) => {
+                    const isActive = location.pathname === item.url;
+                    return (
+                      <SidebarMenuItem key={item.url}>
+                        <SidebarMenuButton 
+                          asChild 
+                          isActive={isActive} 
+                          tooltip={item.title}
+                          className="w-full justify-start"
+                        >
+                          <NavLink
+                            to={item.url}
+                            icon={item.icon}
+                            isActive={isActive}
+                            onClick={() => setOpenMobile(false)}
+                          >
+                            {item.title}
+                          </NavLink>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          ))}
+        </div>
       </SidebarContent>
-      <SidebarFooter>
+      <SidebarFooter className="border-t border-border/50 p-4 bg-card mt-auto">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton onClick={handleLogout} className="text-destructive hover:bg-destructive/10">
-              <LogOut className="ml-2" />
+            <SidebarMenuButton onClick={handleLogout} className="text-destructive hover:text-destructive hover:bg-destructive/10 justify-start w-full" tooltip="تسجيل الخروج">
+              <LogOut className="w-5 h-5 ml-3" />
               <span>تسجيل الخروج</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
