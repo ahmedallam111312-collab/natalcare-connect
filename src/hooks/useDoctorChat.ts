@@ -41,8 +41,7 @@ interface UseDoctorChatResult {
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
-const buildChatId = (doctorId: string, patientId: string) =>
-  `${doctorId}_${patientId}`;
+const buildChatId = (doctorId: string, patientId: string) => patientId;
 
 // ─── Hook ────────────────────────────────────────────────────────────────────
 export function useDoctorChat(

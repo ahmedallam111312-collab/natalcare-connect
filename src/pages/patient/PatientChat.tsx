@@ -51,7 +51,7 @@ export default function PatientChat() {
   useEffect(() => {
     if (!user || !doctorId) return;
     
-    const chatId = `${doctorId}_${user.uid}`; 
+    const chatId = user.uid; 
     const q = query(collection(db, "chats", chatId, "messages"), orderBy("createdAt", "asc"));
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -63,7 +63,7 @@ export default function PatientChat() {
 
   const handleSendMessage = async () => {
     if (!input.trim() || !user || !doctorId) return;
-    const chatId = `${doctorId}_${user.uid}`;
+    const chatId = user.uid;
     const msgText = input.trim();
     setInput(""); 
     
