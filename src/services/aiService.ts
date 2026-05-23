@@ -125,7 +125,7 @@ If a value is not found, return an empty string "" for that key. Do not include 
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "llama-3.2-90b-vision-preview",
+        model: "llama-3.2-11b-vision-preview",
         messages: [
           {
             role: "user",
@@ -195,7 +195,7 @@ Example format:
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "llama-3.2-90b-vision-preview",
+        model: "llama-3.2-11b-vision-preview",
         messages: [
           {
             role: "user",
