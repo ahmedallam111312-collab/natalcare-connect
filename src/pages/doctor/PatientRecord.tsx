@@ -69,11 +69,11 @@ export default function PatientRecord() {
   const ultrasounds = labs.filter(l => l.category === "موجات فوق صوتية (سونار)");
   const laboratoryTests = labs.filter(l => l.category !== "موجات فوق صوتية (سونار)");
 
-  // 2. تجميع التحاليل المخبرية حسب اسم التحليل
-  const groupedLabs = laboratoryTests.reduce((acc: any, lab: any) => {
-    const name = lab.testName || "تحليل عام";
-    if (!acc[name]) acc[name] = [];
-    acc[name].push(lab);
+  // 2. تجميع التحاليل المخبرية حسب التاريخ
+  const groupedLabsByDate = laboratoryTests.reduce((acc: any, lab: any) => {
+    const date = lab.date || "تاريخ غير معروف";
+    if (!acc[date]) acc[date] = [];
+    acc[date].push(lab);
     return acc;
   }, {});
 
@@ -99,12 +99,13 @@ export default function PatientRecord() {
       <Card className="glass-card shadow-sm border-transparent bg-white dark:bg-card">
         <CardContent className="p-6">
           <Tabs defaultValue="history" className="w-full" dir="rtl">
-            <TabsList className="grid w-full grid-cols-2 lg:grid-cols-5 mb-8 bg-muted/50 h-auto p-1.5 rounded-xl gap-1">
+            <TabsList className="grid w-full grid-cols-2 lg:grid-cols-6 mb-8 bg-muted/50 h-auto p-1.5 rounded-xl gap-1">
               <TabsTrigger value="history" className="text-sm py-2.5 rounded-lg data-[state=active]:shadow-sm">التاريخ الطبي</TabsTrigger>
-              <TabsTrigger value="symptoms" className="text-sm py-2.5 rounded-lg data-[state=active]:shadow-sm">الأعراض والتنبيهات</TabsTrigger>
-              <TabsTrigger value="labs" className="text-sm py-2.5 rounded-lg data-[state=active]:shadow-sm">التحاليل والسونار</TabsTrigger>
+              <TabsTrigger value="symptoms" className="text-sm py-2.5 rounded-lg data-[state=active]:shadow-sm">الأعراض</TabsTrigger>
+              <TabsTrigger value="labs" className="text-sm py-2.5 rounded-lg data-[state=active]:shadow-sm">التحاليل</TabsTrigger>
+              <TabsTrigger value="ultrasound" className="text-sm py-2.5 rounded-lg data-[state=active]:shadow-sm">السونار</TabsTrigger>
               <TabsTrigger value="fmc" className="text-sm py-2.5 rounded-lg data-[state=active]:shadow-sm">حركة الجنين</TabsTrigger>
-              <TabsTrigger value="meds" className="text-sm py-2.5 rounded-lg data-[state=active]:shadow-sm">الأدوية الموصوفة</TabsTrigger>
+              <TabsTrigger value="meds" className="text-sm py-2.5 rounded-lg data-[state=active]:shadow-sm">الأدوية</TabsTrigger>
             </TabsList>
 
             {/* 1. التاريخ الطبي */}
@@ -161,113 +162,115 @@ export default function PatientRecord() {
               )}
             </TabsContent>
 
-            {/* 3. السونار والتحاليل */}
+            {/* 3. التحاليل المخبرية */}
             <TabsContent value="labs" className="space-y-8 mt-4 animate-in fade-in-50">
-              {labs.length === 0 && (
+              {laboratoryTests.length === 0 && (
                  <div className="text-center p-12 bg-muted/20 rounded-2xl border border-dashed">
-                  <FileText className="w-12 h-12 text-muted-foreground/50 mx-auto mb-4" />
-                  <p className="text-muted-foreground">لا توجد تقارير سونار أو تحاليل مسجلة.</p>
+                  <Activity className="w-12 h-12 text-muted-foreground/50 mx-auto mb-4" />
+                  <p className="text-muted-foreground">لا توجد تحاليل مخبرية مسجلة.</p>
                 </div>
               )}
 
-              {Object.keys(groupedLabs).length > 0 && (
-                <div className="space-y-5">
-                  <h3 className="font-bold text-xl text-primary flex items-center gap-3 border-b pb-3">
-                    <Activity className="w-6 h-6" /> سجل التحاليل المخبرية (تتبع التقدم)
-                  </h3>
-                  <div className="grid gap-6">
-                    {Object.entries(groupedLabs).map(([testName, testHistory]: [string, any[]]) => (
-                      <Card key={testName} className="overflow-hidden shadow-sm border-border/50">
-                        <CardHeader className="bg-muted/20 py-4 border-b px-6">
-                          <CardTitle className="text-base font-bold flex items-center justify-between">
-                            <span className="text-primary">{testName}</span>
-                            <Badge variant="secondary" className="font-normal">{testHistory.length} قراءات مسجلة</Badge>
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent className="p-0">
-                          <div className="overflow-x-auto">
-                            <table className="w-full text-sm text-right">
-                              <thead className="bg-muted/10 text-muted-foreground text-xs uppercase tracking-wider">
-                                <tr>
-                                  <th className="py-3 px-6 font-medium">التاريخ</th>
-                                  <th className="py-3 px-6 font-medium">النتيجة</th>
-                                  <th className="py-3 px-6 font-medium">المعدل الطبيعي</th>
-                                  <th className="py-3 px-6 font-medium">الحالة</th>
+              {Object.keys(groupedLabsByDate).length > 0 && (
+                <div className="space-y-6">
+                  {Object.entries(groupedLabsByDate).map(([date, tests]: [string, any[]]) => (
+                    <Card key={date} className="overflow-hidden shadow-sm border-border/50">
+                      <CardHeader className="bg-muted/20 py-4 border-b px-6">
+                        <CardTitle className="text-base font-bold flex items-center justify-between">
+                          <span className="flex items-center gap-2">
+                            <Activity className="w-5 h-5 text-primary" /> باقة تحاليل بتاريخ: {date}
+                          </span>
+                          <Badge variant="secondary" className="font-normal">{tests.length} تحاليل</Badge>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="p-0">
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-sm text-right">
+                            <thead className="bg-muted/10 text-muted-foreground text-xs uppercase tracking-wider">
+                              <tr>
+                                <th className="py-3 px-6 font-medium">اسم التحليل</th>
+                                <th className="py-3 px-6 font-medium">النتيجة</th>
+                                <th className="py-3 px-6 font-medium">المعدل الطبيعي</th>
+                                <th className="py-3 px-6 font-medium">الحالة</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-border/50">
+                              {tests.map((lab, idx) => (
+                                <tr key={idx} className="hover:bg-muted/10 transition-colors">
+                                  <td className="py-3.5 px-6 font-medium text-primary">{lab.testName || "تحليل عام"}</td>
+                                  <td className="py-3.5 px-6 font-bold text-base" dir="ltr">
+                                    {lab.value} <span className="text-muted-foreground text-xs font-normal ml-1">{lab.unit}</span>
+                                  </td>
+                                  <td className="py-3.5 px-6 text-muted-foreground" dir="ltr">{lab.referenceRange || "-"}</td>
+                                  <td className="py-3.5 px-6">
+                                    <Badge variant={lab.status === 'abnormal' ? 'destructive' : 'outline'} className={lab.status === 'normal' ? 'text-success border-success/30 bg-success/5' : 'bg-destructive/5'}>
+                                      {lab.status === 'abnormal' ? 'غير طبيعي' : 'طبيعي'}
+                                    </Badge>
+                                  </td>
                                 </tr>
-                              </thead>
-                              <tbody className="divide-y divide-border/50">
-                                {testHistory.map((lab, idx) => (
-                                  <tr key={idx} className="hover:bg-muted/10 transition-colors">
-                                    <td className="py-3.5 px-6 font-medium">{lab.date}</td>
-                                    <td className="py-3.5 px-6 font-bold text-base" dir="ltr">
-                                      {lab.value} <span className="text-muted-foreground text-xs font-normal ml-1">{lab.unit}</span>
-                                    </td>
-                                    <td className="py-3.5 px-6 text-muted-foreground" dir="ltr">{lab.referenceRange || "-"}</td>
-                                    <td className="py-3.5 px-6">
-                                      <Badge variant={lab.status === 'abnormal' ? 'destructive' : 'outline'} className={lab.status === 'normal' ? 'text-success border-success/30 bg-success/5' : 'bg-destructive/5'}>
-                                        {lab.status === 'abnormal' ? 'غير طبيعي' : 'طبيعي'}
-                                      </Badge>
-                                    </td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+
+            {/* 3.5. تقارير السونار */}
+            <TabsContent value="ultrasound" className="space-y-8 mt-4 animate-in fade-in-50">
+              {ultrasounds.length === 0 && (
+                 <div className="text-center p-12 bg-muted/20 rounded-2xl border border-dashed">
+                  <FileText className="w-12 h-12 text-muted-foreground/50 mx-auto mb-4" />
+                  <p className="text-muted-foreground">لا توجد تقارير سونار مسجلة.</p>
                 </div>
               )}
 
               {ultrasounds.length > 0 && (
-                <div className="space-y-5 pt-6">
-                  <h3 className="font-bold text-xl text-primary flex items-center gap-3 border-b pb-3">
-                    <FileText className="w-6 h-6" /> تقارير السونار (Ultrasound)
-                  </h3>
-                  <div className="grid gap-6">
-                    {ultrasounds.map((lab, i) => (
-                      <div key={i} className="p-6 rounded-2xl border border-border/50 bg-background space-y-4 shadow-sm hover:shadow-md transition-shadow">
-                        <div className="flex justify-between items-center border-b border-border/50 pb-4">
-                          <div className="flex items-center gap-3">
-                            <div className="p-2 bg-primary/10 rounded-lg text-primary"><Activity className="w-5 h-5"/></div>
-                            <h3 className="font-heading font-bold text-lg">فحص السونار الروتيني</h3>
-                          </div>
-                          <Badge variant="secondary">{lab.date}</Badge>
+                <div className="grid gap-6">
+                  {ultrasounds.map((lab, i) => (
+                    <div key={i} className="p-6 rounded-2xl border border-border/50 bg-background space-y-4 shadow-sm hover:shadow-md transition-shadow">
+                      <div className="flex justify-between items-center border-b border-border/50 pb-4">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-primary/10 rounded-lg text-primary"><Activity className="w-5 h-5"/></div>
+                          <h3 className="font-heading font-bold text-lg">فحص السونار الروتيني</h3>
                         </div>
-                        
-                        {lab.details && (
-                          <div className="pt-2 space-y-4">
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-muted/20 p-5 rounded-xl">
-                              {lab.details.ga && <div className="space-y-1"><span className="text-muted-foreground text-xs font-medium">عمر الجنين (GA)</span><p className="font-bold text-lg">{lab.details.ga}</p></div>}
-                              {lab.details.fhr && <div className="space-y-1"><span className="text-muted-foreground text-xs font-medium">النبض (FHR)</span><p className="font-bold text-lg">{lab.details.fhr}</p></div>}
-                              {lab.details.efw && <div className="space-y-1"><span className="text-muted-foreground text-xs font-medium">الوزن (EFW)</span><p className="font-bold text-lg">{lab.details.efw}</p></div>}
-                              {lab.details.afi && <div className="space-y-1"><span className="text-muted-foreground text-xs font-medium">السائل (AFI)</span><p className="font-bold text-lg">{lab.details.afi}</p></div>}
-                            </div>
-                            
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-primary/5 p-5 rounded-xl border border-primary/10">
-                              {lab.details.bpd && <div className="space-y-1"><span className="text-primary/70 text-xs font-medium">BPD</span><p className="font-bold">{lab.details.bpd}</p></div>}
-                              {lab.details.hc && <div className="space-y-1"><span className="text-primary/70 text-xs font-medium">HC</span><p className="font-bold">{lab.details.hc}</p></div>}
-                              {lab.details.ac && <div className="space-y-1"><span className="text-primary/70 text-xs font-medium">AC</span><p className="font-bold">{lab.details.ac}</p></div>}
-                              {lab.details.fl && <div className="space-y-1"><span className="text-primary/70 text-xs font-medium">FL</span><p className="font-bold">{lab.details.fl}</p></div>}
-                              
-                              {lab.details.flBpd && <div className="space-y-1 mt-2"><span className="text-primary/70 text-xs font-medium">FL/BPD Ratio</span><p className="font-bold">{lab.details.flBpd}</p></div>}
-                              {lab.details.ci && <div className="space-y-1 mt-2"><span className="text-primary/70 text-xs font-medium">Cephalic Index</span><p className="font-bold">{lab.details.ci}</p></div>}
-                              {lab.details.hcAc && <div className="space-y-1 mt-2"><span className="text-primary/70 text-xs font-medium">HC/AC Ratio</span><p className="font-bold">{lab.details.hcAc}</p></div>}
-                              {lab.details.flAc && <div className="space-y-1 mt-2"><span className="text-primary/70 text-xs font-medium">FL/AC Ratio</span><p className="font-bold">{lab.details.flAc}</p></div>}
-                            </div>
-
-                            {lab.details.notes && (
-                              <div className="mt-4 p-4 bg-muted/40 rounded-xl border border-border/50">
-                                <p className="font-bold text-sm text-foreground mb-1">ملاحظات الطبيب المتخصص:</p>
-                                <p className="text-sm text-muted-foreground leading-relaxed">{lab.details.notes}</p>
-                              </div>
-                            )}
-                          </div>
-                        )}
+                        <Badge variant="secondary">{lab.date}</Badge>
                       </div>
-                    ))}
-                  </div>
+                      
+                      {lab.details && (
+                        <div className="pt-2 space-y-4">
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-muted/20 p-5 rounded-xl">
+                            {lab.details.ga && <div className="space-y-1"><span className="text-muted-foreground text-xs font-medium">عمر الجنين (GA)</span><p className="font-bold text-lg">{lab.details.ga}</p></div>}
+                            {lab.details.fhr && <div className="space-y-1"><span className="text-muted-foreground text-xs font-medium">النبض (FHR)</span><p className="font-bold text-lg">{lab.details.fhr}</p></div>}
+                            {lab.details.efw && <div className="space-y-1"><span className="text-muted-foreground text-xs font-medium">الوزن (EFW)</span><p className="font-bold text-lg">{lab.details.efw}</p></div>}
+                            {lab.details.afi && <div className="space-y-1"><span className="text-muted-foreground text-xs font-medium">السائل (AFI)</span><p className="font-bold text-lg">{lab.details.afi}</p></div>}
+                          </div>
+                          
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-primary/5 p-5 rounded-xl border border-primary/10">
+                            {lab.details.bpd && <div className="space-y-1"><span className="text-primary/70 text-xs font-medium">BPD</span><p className="font-bold">{lab.details.bpd}</p></div>}
+                            {lab.details.hc && <div className="space-y-1"><span className="text-primary/70 text-xs font-medium">HC</span><p className="font-bold">{lab.details.hc}</p></div>}
+                            {lab.details.ac && <div className="space-y-1"><span className="text-primary/70 text-xs font-medium">AC</span><p className="font-bold">{lab.details.ac}</p></div>}
+                            {lab.details.fl && <div className="space-y-1"><span className="text-primary/70 text-xs font-medium">FL</span><p className="font-bold">{lab.details.fl}</p></div>}
+                            
+                            {lab.details.flBpd && <div className="space-y-1 mt-2"><span className="text-primary/70 text-xs font-medium">FL/BPD Ratio</span><p className="font-bold">{lab.details.flBpd}</p></div>}
+                            {lab.details.ci && <div className="space-y-1 mt-2"><span className="text-primary/70 text-xs font-medium">Cephalic Index</span><p className="font-bold">{lab.details.ci}</p></div>}
+                            {lab.details.hcAc && <div className="space-y-1 mt-2"><span className="text-primary/70 text-xs font-medium">HC/AC Ratio</span><p className="font-bold">{lab.details.hcAc}</p></div>}
+                            {lab.details.flAc && <div className="space-y-1 mt-2"><span className="text-primary/70 text-xs font-medium">FL/AC Ratio</span><p className="font-bold">{lab.details.flAc}</p></div>}
+                          </div>
+
+                          {lab.details.notes && (
+                            <div className="mt-4 p-4 bg-muted/40 rounded-xl border border-border/50">
+                              <p className="font-bold text-sm text-foreground mb-1">ملاحظات الطبيب المتخصص:</p>
+                              <p className="text-sm text-muted-foreground leading-relaxed">{lab.details.notes}</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
                 </div>
               )}
             </TabsContent>
