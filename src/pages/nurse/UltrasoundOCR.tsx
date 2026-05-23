@@ -51,52 +51,73 @@ export default function UltrasoundOCR() {
     setFormData({ fhr: "", efw: "", afi: "", ga: "", bpd: "", hc: "", ac: "", fl: "", flBpd: "", ci: "", hcAc: "", flAc: "", notes: "" });
     setRawOcrText("");
 
+    // Image compression helper
+    const compressImage = (file: File): Promise<string> => {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (event) => {
+          const img = new Image();
+          img.src = event.target?.result as string;
+          img.onload = () => {
+            const canvas = document.createElement("canvas");
+            const ctx = canvas.getContext("2d");
+            const MAX_WIDTH = 1200;
+            const MAX_HEIGHT = 1200;
+            let width = img.width;
+            let height = img.height;
+
+            if (width > height) {
+              if (width > MAX_WIDTH) {
+                height *= MAX_WIDTH / width;
+                width = MAX_WIDTH;
+              }
+            } else {
+              if (height > MAX_HEIGHT) {
+                width *= MAX_HEIGHT / height;
+                height = MAX_HEIGHT;
+              }
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+            ctx?.drawImage(img, 0, 0, width, height);
+            resolve(canvas.toDataURL("image/jpeg", 0.7)); // compress to 70% quality JPEG
+          };
+          img.onerror = error => reject(error);
+        };
+        reader.onerror = error => reject(error);
+      });
+    };
+
     try {
-      // 1. تحويل الصورة إلى Base64
+      // 1. تحويل الصورة إلى Base64 مع الضغط
       setLoadingState("ai");
-      toast.info("جاري تحليل القياسات الطبية بالذكاء الاصطناعي...");
+      toast.info("جاري تجهيز الصورة وتحليل القياسات الطبية بالذكاء الاصطناعي...");
 
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        try {
-          const base64String = reader.result as string;
-          const parsedData = await analyzeUltrasoundImage(base64String);
-          
-          setFormData({
-            fhr: parsedData.fhr || "",
-            efw: parsedData.efw || "",
-            afi: parsedData.afi || "",
-            ga: parsedData.ga || "",
-            bpd: parsedData.bpd || "",
-            hc: parsedData.hc || "",
-            ac: parsedData.ac || "",
-            fl: parsedData.fl || "",
-            flBpd: parsedData.flBpd || "",
-            ci: parsedData.ci || "",
-            hcAc: parsedData.hcAc || "",
-            flAc: parsedData.flAc || "",
-            notes: parsedData.notes || ""
-          });
-          setRawOcrText(JSON.stringify(parsedData, null, 2)); // Save raw JSON output for reference
-          toast.success("تم استخراج وتحليل القياسات الحيوية بنجاح!");
-        } catch (error: any) {
-          console.error("Analysis Error:", error);
-          toast.error(error.message || "فشل التحليل الذكي. يمكنك إدخال البيانات يدوياً.");
-        } finally {
-          setLoadingState("idle");
-        }
-      };
-
-      reader.onerror = () => {
-        toast.error("فشل في قراءة ملف الصورة.");
-        setLoadingState("idle");
-      };
-
-      reader.readAsDataURL(file);
-
-    } catch (error) {
-      console.error("Upload Error:", error);
-      toast.error("حدث خطأ أثناء معالجة الصورة.");
+      const base64String = await compressImage(file);
+      const parsedData = await analyzeUltrasoundImage(base64String);
+      
+      setFormData({
+        fhr: parsedData.fhr || "",
+        efw: parsedData.efw || "",
+        afi: parsedData.afi || "",
+        ga: parsedData.ga || "",
+        bpd: parsedData.bpd || "",
+        hc: parsedData.hc || "",
+        ac: parsedData.ac || "",
+        fl: parsedData.fl || "",
+        flBpd: parsedData.flBpd || "",
+        ci: parsedData.ci || "",
+        hcAc: parsedData.hcAc || "",
+        flAc: parsedData.flAc || "",
+        notes: parsedData.notes || ""
+      });
+      setRawOcrText(JSON.stringify(parsedData, null, 2)); // Save raw JSON output for reference
+      toast.success("تم استخراج وتحليل القياسات الحيوية بنجاح!");
+    } catch (error: any) {
+      console.error("Analysis Error:", error);
+      toast.error(error.message || "حدث خطأ أثناء معالجة الصورة أو فشل التحليل الذكي.");
       setLoadingState("idle");
     }
   };
