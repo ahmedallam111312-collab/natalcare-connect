@@ -89,7 +89,7 @@ export default function ProfileUploader() {
             accept="image/*" 
             className="hidden" 
             onChange={handleImageUpload} 
-            disabled={isUploading || !IMGBB_API_KEY || IMGBB_API_KEY === "YOUR_IMGBB_API_KEY_HERE"}
+            disabled={isUploading}
           />
         </label>
       </div>
@@ -97,11 +97,6 @@ export default function ProfileUploader() {
         <p className="font-heading font-bold text-sm">{user?.displayName}</p>
         <p className="text-xs text-muted-foreground mt-0.5">انقري على أيقونة الكاميرا لتغيير صورتك</p>
         
-        {(!IMGBB_API_KEY || IMGBB_API_KEY === "YOUR_IMGBB_API_KEY_HERE") && (
-          <p className="text-xs text-destructive mt-2 font-bold animate-pulse">
-            ⚠️ يرجى إضافة مفتاح ImgBB في الكود لكي يعمل الرفع
-          </p>
-        )}
       </div>
     </div>
   );
