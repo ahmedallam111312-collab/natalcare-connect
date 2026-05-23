@@ -34,6 +34,7 @@ import DoctorAnalytics from "@/pages/doctor/DoctorAnalytics";
 import DoctorChat from "@/pages/doctor/DoctorChat";
 import CommunicationTemplates from "@/pages/doctor/CommunicationTemplates";
 import DoctorSettings from "@/pages/doctor/DoctorSettings";
+import PatientRecord from "@/pages/doctor/PatientRecord";
 import NurseLayout from "@/layouts/NurseLayout";
 import NurseDashboard from "@/pages/nurse/NurseDashboard";
 import NursePatientDirectory from "@/pages/nurse/NursePatientDirectory";
@@ -94,6 +95,7 @@ const AnimatedRoutes = () => {
         <Route path="/doctor" element={<ProtectedRoute allowedRoles={["doctor"]}><DoctorLayout /></ProtectedRoute>}>
           <Route index element={<PageTransition><DoctorDashboard /></PageTransition>} />
           <Route path="patients" element={<PageTransition><PatientsList /></PageTransition>} />
+          <Route path="patient/:id" element={<PageTransition><PatientRecord /></PageTransition>} />
           <Route path="alerts" element={<PageTransition><PriorityAlerts /></PageTransition>} />
           <Route path="analytics" element={<PageTransition><DoctorAnalytics /></PageTransition>} />
           <Route path="chat" element={<PageTransition><DoctorChat /></PageTransition>} />
