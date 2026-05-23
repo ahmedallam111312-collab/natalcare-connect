@@ -11,6 +11,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import "@/lib/i18n";
 import OfflineBanner from "@/components/OfflineBanner";
+import AppLoader from "@/components/AppLoader";
 import PageTransition from "@/components/animations/PageTransition";
 import { AnimatePresence } from "framer-motion";
 
@@ -141,7 +142,7 @@ const App = () => {
     return () => unsubscribe();
   }, [setUser, setLoading]);
 
-  if (isLoading) return <div className="flex h-screen w-screen items-center justify-center">Loading...</div>;
+  if (isLoading) return <AppLoader />;
 
   return (
     <QueryClientProvider client={queryClient}>
