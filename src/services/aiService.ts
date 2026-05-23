@@ -136,10 +136,15 @@ If a value is not found, return an empty string "" for that key. Do not include 
           }
         ],
         temperature: 0.1,
+        max_tokens: 2048,
       }),
     });
 
-    if (!response.ok) throw new Error("Groq Vision API error");
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error("Groq Error Response (Ultrasound):", errText);
+      throw new Error("Groq Vision API error");
+    }
     const data: GroqResponse = await response.json();
     let resultContent = data.choices[0]?.message?.content || "{}";
     
@@ -201,10 +206,15 @@ Example format:
           }
         ],
         temperature: 0.1,
+        max_tokens: 2048,
       }),
     });
 
-    if (!response.ok) throw new Error("Groq Vision API error");
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error("Groq Error Response (Labs):", errText);
+      throw new Error("Groq Vision API error");
+    }
     const data: GroqResponse = await response.json();
     let resultContent = data.choices[0]?.message?.content || "[]";
     
