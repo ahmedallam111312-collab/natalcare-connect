@@ -9,7 +9,7 @@ import { useAuthStore } from "@/stores/authStore";
 import { toast } from "sonner";
 
 // ضعي مفتاح ImgBB هنا
-const IMGBB_API_KEY = import.meta.env.VITE_IMGBB_API_KEY; 
+const IMGBB_API_KEY = import.meta.env.VITE_IMGBB_API_KEY || "1224578297d8b1570e2be36be30b6ddd";
 
 export default function ProfileUploader() {
   const { user } = useAuthStore();
