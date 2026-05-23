@@ -51,6 +51,10 @@ import PatientChat from "@/pages/patient/PatientChat";
 import PatientOnboarding from "@/pages/patient/PatientOnboarding";
 import ContractionTimer from "@/pages/patient/ContractionTimer";
 import BirthPreparation from "@/pages/patient/BirthPreparation";
+import PregnancyJourney from "@/pages/patient/PregnancyJourney";
+import NutritionTracker from "@/pages/patient/NutritionTracker";
+import MentalHealthTracker from "@/pages/patient/MentalHealthTracker";
+import PartnerAccess from "@/pages/patient/PartnerAccess";
 import DoctorPrescriptions from "@/pages/doctor/DoctorPrescriptions";
 
 const queryClient = new QueryClient();
@@ -79,6 +83,10 @@ const AnimatedRoutes = () => {
           <Route path="onboarding" element={<PageTransition><PatientOnboarding /></PageTransition>} />
           <Route path="contractions" element={<PageTransition><ContractionTimer /></PageTransition>} />
           <Route path="birth-plan" element={<PageTransition><BirthPreparation /></PageTransition>} />
+          <Route path="journey" element={<PageTransition><PregnancyJourney /></PageTransition>} />
+          <Route path="nutrition" element={<PageTransition><NutritionTracker /></PageTransition>} />
+          <Route path="mental-health" element={<PageTransition><MentalHealthTracker /></PageTransition>} />
+          <Route path="partner" element={<PageTransition><PartnerAccess /></PageTransition>} />
         </Route>
         
         <Route path="/doctor" element={<ProtectedRoute allowedRoles={["doctor"]}><DoctorLayout /></ProtectedRoute>}>

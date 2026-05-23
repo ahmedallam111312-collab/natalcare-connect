@@ -1,4 +1,4 @@
-import { LayoutDashboard, MessageCircle, FlaskConical, Activity, Pill, Building2, Settings, Baby, LogOut, MessageSquare, ClipboardList } from "lucide-react";
+import { LayoutDashboard, MessageCircle, FlaskConical, Activity, Pill, Building2, Settings, Baby, LogOut, MessageSquare, ClipboardList, CalendarHeart, Utensils, BrainCircuit, Users } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
 import { signOut } from "firebase/auth";
@@ -7,14 +7,18 @@ import { toast } from "sonner";
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from "@/components/ui/sidebar";
 
 const navItems = [
-  { title: "لوحة التحكم", url: "/patient", icon: LayoutDashboard },
-  { title: "متتبع الانقباضات", url: "/patient/contractions", icon: Activity },
+  { title: "الرئيسية", url: "/patient", icon: LayoutDashboard },
+  { title: "رحلة الحمل", url: "/patient/journey", icon: CalendarHeart },
   { title: "تجهيزات الولادة", url: "/patient/birth-plan", icon: ClipboardList },
+  { title: "متتبع الانقباضات", url: "/patient/contractions", icon: Activity },
+  { title: "مخطط التغذية", url: "/patient/nutrition", icon: Utensils },
+  { title: "الصحة النفسية", url: "/patient/mental-health", icon: BrainCircuit },
   { title: "متتبع الأعراض", url: "/patient/symptoms", icon: MessageCircle },
   { title: "تواصل مع الطبيب", url: "/patient/chat", icon: MessageSquare },
   { title: "المؤشرات اليومية", url: "/patient/vitals", icon: Activity },
   { title: "النتائج المخبرية", url: "/patient/labs", icon: FlaskConical },
   { title: "الأدوية", url: "/patient/medications", icon: Pill },
+  { title: "مشاركة الشريك", url: "/patient/partner", icon: Users },
   { title: "المستشفيات", url: "/patient/hospitals", icon: Building2 },
   { title: "الإعدادات", url: "/patient/settings", icon: Settings },
 ];

@@ -48,6 +48,15 @@ service cloud.firestore {
       match /birthPlan/{document=**} {
         allow read, write: if isOwner(userId) || isStaff();
       }
+      match /weightLogs/{document=**} {
+        allow read, write: if isOwner(userId) || isStaff();
+      }
+      match /mentalHealth/{document=**} {
+        allow read, write: if isOwner(userId) || isStaff();
+      }
+      match /partnerAccess/{document=**} {
+        allow read, write: if isOwner(userId) || isStaff();
+      }
     }
     
     match /chats/{chatId}/messages/{messageId} {
