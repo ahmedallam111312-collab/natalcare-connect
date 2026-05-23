@@ -49,6 +49,8 @@ import AdminSettings from "@/pages/admin/AdminSettings";
 import NotFound from "./pages/NotFound";
 import PatientChat from "@/pages/patient/PatientChat";
 import PatientOnboarding from "@/pages/patient/PatientOnboarding";
+import ContractionTimer from "@/pages/patient/ContractionTimer";
+import BirthPreparation from "@/pages/patient/BirthPreparation";
 import DoctorPrescriptions from "@/pages/doctor/DoctorPrescriptions";
 
 const queryClient = new QueryClient();
@@ -75,6 +77,8 @@ const AnimatedRoutes = () => {
           <Route path="hospitals" element={<PageTransition><Hospitals /></PageTransition>} />
           <Route path="settings" element={<PageTransition><PatientSettings /></PageTransition>} />
           <Route path="onboarding" element={<PageTransition><PatientOnboarding /></PageTransition>} />
+          <Route path="contractions" element={<PageTransition><ContractionTimer /></PageTransition>} />
+          <Route path="birth-plan" element={<PageTransition><BirthPreparation /></PageTransition>} />
         </Route>
         
         <Route path="/doctor" element={<ProtectedRoute allowedRoles={["doctor"]}><DoctorLayout /></ProtectedRoute>}>

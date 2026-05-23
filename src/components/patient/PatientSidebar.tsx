@@ -1,4 +1,4 @@
-import { LayoutDashboard, MessageCircle, FlaskConical, Activity, Pill, Building2, Settings, Baby, LogOut, MessageSquare } from "lucide-react";
+import { LayoutDashboard, MessageCircle, FlaskConical, Activity, Pill, Building2, Settings, Baby, LogOut, MessageSquare, ClipboardList } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
 import { signOut } from "firebase/auth";
@@ -8,6 +8,8 @@ import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupConte
 
 const navItems = [
   { title: "لوحة التحكم", url: "/patient", icon: LayoutDashboard },
+  { title: "متتبع الانقباضات", url: "/patient/contractions", icon: Activity },
+  { title: "تجهيزات الولادة", url: "/patient/birth-plan", icon: ClipboardList },
   { title: "متتبع الأعراض", url: "/patient/symptoms", icon: MessageCircle },
   { title: "تواصل مع الطبيب", url: "/patient/chat", icon: MessageSquare },
   { title: "المؤشرات اليومية", url: "/patient/vitals", icon: Activity },

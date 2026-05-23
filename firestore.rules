@@ -42,6 +42,12 @@ service cloud.firestore {
       match /fmcReports/{document=**} {
         allow read, write: if isOwner(userId) || isStaff();
       }
+      match /contractions/{document=**} {
+        allow read, write: if isOwner(userId) || isStaff();
+      }
+      match /birthPlan/{document=**} {
+        allow read, write: if isOwner(userId) || isStaff();
+      }
     }
     
     match /chats/{chatId}/messages/{messageId} {
