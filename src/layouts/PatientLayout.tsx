@@ -1,4 +1,4 @@
-import { Outlet } from "react-router-dom";
+import { Outlet, Navigate, useLocation } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { PatientSidebar } from "@/components/patient/PatientSidebar";
 import { useAuthStore } from "@/stores/authStore";
@@ -7,6 +7,11 @@ import UserNav from "@/components/UserNav";
 
 export default function PatientLayout() {
   const { user } = useAuthStore();
+  const location = useLocation();
+
+  if (user?.role === "patient" && !user.profileCompleted && location.pathname !== "/patient/onboarding") {
+    return <Navigate to="/patient/onboarding" replace />;
+  }
 
   return (
     <SidebarProvider>

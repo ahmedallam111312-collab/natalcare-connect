@@ -4,9 +4,11 @@ import { collection, query, onSnapshot, orderBy, limit, doc, updateDoc } from "f
 import { db } from "@/services/firebase";
 import { useAuthStore } from "@/stores/authStore";
 import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
 
 export default function NotificationBell() {
   const { user } = useAuthStore();
+  const navigate = useNavigate();
   const [alerts, setAlerts] = useState<any[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -84,24 +86,37 @@ export default function NotificationBell() {
     }
   }, [user]);
 
-  // تحديد الإشعار كمقروء (أو إخفاؤه للمريضة)
-  const markAsRead = async (alert: any) => {
-    if (alert.isDynamic) {
-      // الإشعارات الديناميكية للمريضة لا تحتاج لحفظ في القاعدة، نكتفي بإخفائها مؤقتاً
-      setAlerts(prev => prev.filter(a => a.id !== alert.id));
-      return;
-    }
-
+  const handleAcknowledge = async (alert: any) => {
     try {
-      await updateDoc(doc(db, "alerts", alert.id), { acknowledged: true });
+      if (alert.isDynamic) {
+        setIsOpen(false);
+      } else {
+        if (!alert.acknowledged) {
+          await updateDoc(doc(db, "alerts", alert.id), { acknowledged: true });
+        }
+        setIsOpen(false);
+      }
+      
+      // Routing based on alert type
+      const role = (user as any)?.role;
+      const baseRoute = role === "patient" ? "/patient" : role === "nurse" ? "/nurse" : "/doctor";
+      
+      if (alert.type === "chat") {
+        navigate(`${baseRoute}/chat`);
+      } else if (alert.type === "fmc" || alert.type === "symptoms" || alert.type === "vitals" || alert.type === "labs") {
+        navigate(`${baseRoute}/alerts`);
+      } else {
+        navigate(`${baseRoute}`);
+      }
+      
     } catch (error) {
-      console.error("Error marking as read", error);
+      console.error("Error acknowledging alert:", error);
     }
   };
 
   const markAllAsRead = () => {
     alerts.forEach(a => {
-      if (!a.acknowledged) markAsRead(a);
+      if (!a.acknowledged) handleAcknowledge(a);
     });
   };
 
@@ -151,7 +166,7 @@ export default function NotificationBell() {
                   <div 
                     key={alert.id} 
                     className={`p-4 flex items-start gap-3 transition-colors cursor-pointer hover:bg-muted/30 ${!alert.acknowledged ? 'bg-primary/5' : 'opacity-70'}`}
-                    onClick={() => !alert.acknowledged && markAsRead(alert)}
+                    onClick={() => handleAcknowledge(alert)}
                   >
                     <div className="shrink-0 mt-0.5">
                       {/* أيقونات ديناميكية حسب نوع الإشعار */}

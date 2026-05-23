@@ -1,10 +1,13 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useNavigate } from "react-router-dom";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 import {
   Select,
   SelectContent,
@@ -27,24 +30,24 @@ import {
   CheckCircle2,
   AlertCircle,
 } from "lucide-react";
-import {
-  collection,
-  query,
-  orderBy,
-  limit,
-  onSnapshot,
-  addDoc,
-  serverTimestamp,
-  getDoc,
-  doc,
-} from "firebase/firestore";
-import { db } from "@/services/firebase";
 import { useAuthStore } from "@/stores/authStore";
 import { toast } from "sonner";
+import { usePatientData } from "@/hooks/usePatientData";
+import { patientService } from "@/services/patientService";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const FMC_DURATION = 2 * 60 * 60; // 2 hours in seconds
 const KICK_GOAL = 10;
+
+// ─── Zod Schema for Appointment ───────────────────────────────────────────────
+const appointmentSchema = z.object({
+  date: z.string().min(1, "تاريخ الموعد مطلوب"),
+  time: z.string().min(1, "وقت الموعد مطلوب"),
+  doctor: z.string().min(3, "اسم الطبيب يجب أن يكون 3 أحرف على الأقل"),
+  type: z.string().min(1, "نوع الموعد مطلوب"),
+  notes: z.string().optional(),
+});
+type AppointmentFormValues = z.infer<typeof appointmentSchema>;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function formatTime(seconds: number) {
@@ -64,15 +67,6 @@ function formatArabicDate(dateStr: string) {
 }
 
 type FMCStatus = "idle" | "running" | "paused" | "done";
-
-interface Appointment {
-  id?: string;
-  date: string;
-  time: string;
-  doctor: string;
-  type: string;
-  notes?: string;
-}
 
 interface FMCReport {
   date: string;
@@ -118,53 +112,36 @@ function TimerRing({ progress, timeLabel }: { progress: number; timeLabel: strin
 export default function PatientDashboard() {
   const { user } = useAuthStore();
   const navigate = useNavigate();
-
-  // ── Profile Check ─────────────────────────────────────────────────────────
-  useEffect(() => {
-    if (!user) return;
-    
-    const checkProfile = async () => {
-      try {
-        const userDoc = await getDoc(doc(db, "users", user.uid));
-        if (userDoc.exists() && !userDoc.data().profileCompleted) {
-          navigate("/patient/onboarding");
-        }
-      } catch (error) {
-        console.error("Error checking profile:", error);
-      }
-    };
-    checkProfile();
-  }, [user, navigate]);
-
-  // ── Vitals & appointments ──────────────────────────────────
-  const [latestVitals, setLatestVitals] = useState<any>(null);
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const { latestVitals, appointments } = usePatientData(user?.uid);
   const [gestationalWeek] = useState(28);
 
-  useEffect(() => {
+  // ── Appointment booking form (react-hook-form) ──────────────────────────
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<AppointmentFormValues>({
+    resolver: zodResolver(appointmentSchema),
+    defaultValues: { type: "" }, // required for select to work correctly
+  });
+
+  const onSubmitAppointment = async (data: AppointmentFormValues) => {
     if (!user) return;
-
-    const vitalsQ = query(
-      collection(db, "users", user.uid, "vitals"),
-      orderBy("createdAt", "desc"),
-      limit(1)
-    );
-    const unsub1 = onSnapshot(vitalsQ, (snap) => {
-      setLatestVitals(snap.empty ? null : snap.docs[0].data());
-    });
-
-    const apptQ = query(
-      collection(db, "users", user.uid, "appointments"),
-      orderBy("date", "asc")
-    );
-    const unsub2 = onSnapshot(apptQ, (snap) => {
-      setAppointments(
-        snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Appointment, "id">) }))
-      );
-    });
-
-    return () => { unsub1(); unsub2(); };
-  }, [user]);
+    if (new Date(data.date) < new Date(new Date().toDateString())) {
+      toast.error("يرجى اختيار تاريخ مستقبلي");
+      return;
+    }
+    try {
+      await patientService.bookAppointment(user.uid, data);
+      toast.success("تم حجز الموعد بنجاح ✓");
+      reset();
+    } catch (err) {
+      console.error(err);
+      toast.error("حدث خطأ أثناء حجز الموعد");
+    }
+  };
 
   // ── FMC state ─────────────────────────────────────────────────────────────
   const [fmcStatus, setFmcStatus] = useState<FMCStatus>("idle");
@@ -266,56 +243,28 @@ export default function PatientDashboard() {
     setKicks((prev) => Math.max(0, prev - 1));
   }, [fmcStatus]);
 
-  // =========================================
-  // دالة الإرسال المبكر للطبيب (End & Send Now)
-  // =========================================
   const sendEarlyReport = async () => {
     if (!user) return;
-    
-    // إيقاف العداد
     clearTimer();
     setSendingReport(true);
-    
     try {
       const elapsedSeconds = FMC_DURATION - remaining;
-      const elapsedMinutes = Math.floor(elapsedSeconds / 60);
       const isGoalMet = kicks >= KICK_GOAL;
-
-      const earlyReport = {
+      
+      await patientService.submitFMCReport(user.uid, user.displayName, {
         date: new Date().toLocaleDateString("ar-EG", {
-          weekday: "long",
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
+          weekday: "long", year: "numeric", month: "long", day: "numeric",
+          hour: "2-digit", minute: "2-digit",
         }),
-        kicks: kicks,
+        kicks,
         goalMet: isGoalMet,
         durationSeconds: elapsedSeconds,
         status: isGoalMet ? "normal" : "needs_followup",
-      };
-
-      // 1. حفظ التقرير في ملف المريضة
-      await addDoc(collection(db, "users", user.uid, "fmcReports"), {
-        ...earlyReport,
-        createdAt: serverTimestamp(),
         gestationalWeek,
       });
 
-      // 2. إرسال تنبيه فوري للطبيب
-      await addDoc(collection(db, "alerts"), {
-        patientId: user.uid,
-        patientName: user.displayName,
-        type: "fmc",
-        message: `أنهت المريضة جلسة حركة الجنين مبكراً. الركلات: ${kicks} خلال ${elapsedMinutes} دقيقة.`,
-        severity: isGoalMet ? "low" : "high", // تصبح عالية الخطورة إذا أنهت الجلسة ولم تصل للهدف
-        acknowledged: false,
-        createdAt: serverTimestamp(),
-      });
-
       toast.success("تم إرسال التقرير الحالي للطبيبة بنجاح ✓", { duration: 3500 });
-      resetFMC(); // إعادة تعيين الجلسة للبداية
+      resetFMC();
     } catch (err) {
       console.error(err);
       toast.error("حدث خطأ أثناء إرسال التقرير، يرجى المحاولة مجدداً");
@@ -324,29 +273,14 @@ export default function PatientDashboard() {
     }
   };
 
-  // دالة الإرسال عند الانتهاء الكامل للساعتين
   const sendFMCReport = useCallback(async () => {
     if (!user || !report) return;
     setSendingReport(true);
     try {
-      await addDoc(collection(db, "users", user.uid, "fmcReports"), {
+      await patientService.submitFMCReport(user.uid, user.displayName, {
         ...report,
-        createdAt: serverTimestamp(),
         gestationalWeek,
       });
-
-      await addDoc(collection(db, "alerts"), {
-        patientId: user.uid,
-        patientName: user.displayName,
-        type: "fmc",
-        message: report.goalMet 
-          ? `سجلت المريضة حركة جنين طبيعية (${report.kicks} ركلات).` 
-          : `⚠️ تنبيه: حركة الجنين أقل من الطبيعي (${report.kicks} ركلات فقط)!`,
-        severity: report.goalMet ? "low" : "high",
-        acknowledged: false,
-        createdAt: serverTimestamp(),
-      });
-
       toast.success("تم إرسال التقرير إلى الطبيبة بنجاح ✓", { duration: 3500 });
       resetFMC();
     } catch (err) {
@@ -359,46 +293,6 @@ export default function PatientDashboard() {
 
   useEffect(() => () => clearTimer(), [clearTimer]);
 
-  // ── Appointment booking ────────────────────────────────────────────────────
-  const [apptForm, setApptForm] = useState({
-    date: "",
-    time: "",
-    doctor: "",
-    type: "",
-    notes: "",
-  });
-  const [bookingLoading, setBookingLoading] = useState(false);
-
-  const handleApptChange = (field: string, value: string) =>
-    setApptForm((prev) => ({ ...prev, [field]: value }));
-
-  const bookAppointment = useCallback(async () => {
-    const { date, time, doctor, type } = apptForm;
-    if (!date || !time || !doctor || !type) {
-      toast.error("يرجى ملء جميع الحقول الإلزامية");
-      return;
-    }
-    if (new Date(date) < new Date(new Date().toDateString())) {
-      toast.error("يرجى اختيار تاريخ مستقبلي");
-      return;
-    }
-    if (!user) return;
-    setBookingLoading(true);
-    try {
-      await addDoc(collection(db, "users", user.uid, "appointments"), {
-        ...apptForm,
-        createdAt: serverTimestamp(),
-      });
-      setApptForm({ date: "", time: "", doctor: "", type: "", notes: "" });
-      toast.success("تم حجز الموعد بنجاح ✓");
-    } catch (err) {
-      console.error(err);
-      toast.error("حدث خطأ أثناء حجز الموعد");
-    } finally {
-      setBookingLoading(false);
-    }
-  }, [apptForm, user]);
-
   const progress = remaining / FMC_DURATION;
   const kickProgress = Math.min((kicks / KICK_GOAL) * 100, 100);
   const isActive = fmcStatus === "running";
@@ -407,31 +301,31 @@ export default function PatientDashboard() {
     .slice(0, 3);
 
   return (
-    <div className="space-y-6 animate-fade-in" dir="rtl">
+    <div className="space-y-8 animate-fade-in" dir="rtl">
       <div>
-        <h1 className="text-2xl font-heading font-bold">لوحة التحكم</h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          الأسبوع {gestationalWeek} · تابعي رحلة حملك
+        <h1 className="text-3xl font-heading font-bold text-foreground">لوحة التحكم السريرية</h1>
+        <p className="text-muted-foreground text-sm mt-2">
+          الأسبوع {gestationalWeek} · تابعي رحلة حملك بأمان وتواصل دائم مع عيادتك
         </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
-          { icon: <Baby className="w-5 h-5 text-primary" />, bg: "bg-primary/10", label: "أسبوع الحمل", value: gestationalWeek, unit: "" },
-          { icon: <Activity className="w-5 h-5 text-success" />, bg: "bg-success/10", label: "ضغط الدم", value: latestVitals ? `${latestVitals.bloodPressureSystolic}/${latestVitals.bloodPressureDiastolic}` : "--/--", unit: "", ltr: true },
-          { icon: <TrendingUp className="w-5 h-5 text-warning" />, bg: "bg-warning/10", label: "سكر الدم", value: latestVitals?.bloodSugar ?? "--", unit: "mg/dL" },
-          { icon: <CalendarDays className="w-5 h-5 text-accent" />, bg: "bg-accent/10", label: "الوزن", value: latestVitals?.weight ?? "--", unit: "كجم" },
+          { icon: <Baby className="w-6 h-6 text-primary" />, bg: "bg-primary/10", label: "أسبوع الحمل", value: gestationalWeek, unit: "" },
+          { icon: <Activity className="w-6 h-6 text-success" />, bg: "bg-success/10", label: "ضغط الدم", value: latestVitals ? `${latestVitals.bloodPressureSystolic}/${latestVitals.bloodPressureDiastolic}` : "--/--", unit: "", ltr: true },
+          { icon: <TrendingUp className="w-6 h-6 text-warning" />, bg: "bg-warning/10", label: "سكر الدم", value: latestVitals?.bloodSugar ?? "--", unit: "mg/dL" },
+          { icon: <CalendarDays className="w-6 h-6 text-accent" />, bg: "bg-accent/10", label: "الوزن", value: latestVitals?.weight ?? "--", unit: "كجم" },
         ].map((s, i) => (
-          <Card key={i} className="glass-card">
-            <CardContent className="pt-5 pb-4">
-              <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-xl ${s.bg} flex items-center justify-center`}>
+          <Card key={i} className="glass-card hover:shadow-lg transition-shadow border-transparent bg-white dark:bg-card">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-4">
+                <div className={`w-14 h-14 rounded-full ${s.bg} flex items-center justify-center shrink-0`}>
                   {s.icon}
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">{s.label}</p>
-                  <p className="text-xl font-heading font-bold" dir={s.ltr ? "ltr" : undefined}>
-                    {s.value} {s.unit && <span className="text-sm font-normal text-muted-foreground mr-1">{s.unit}</span>}
+                  <p className="text-sm font-medium text-muted-foreground mb-1">{s.label}</p>
+                  <p className="text-3xl font-heading font-bold text-foreground" dir={s.ltr ? "ltr" : undefined}>
+                    {s.value} {s.unit && <span className="text-sm font-normal text-muted-foreground ml-1">{s.unit}</span>}
                   </p>
                 </div>
               </div>
@@ -440,77 +334,79 @@ export default function PatientDashboard() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
 
         {/* ── FMC Card ── */}
-        <Card className="glass-card">
-          <CardHeader>
+        <Card className="glass-card shadow-sm border-transparent bg-white dark:bg-card">
+          <CardHeader className="border-b bg-muted/10 pb-4">
             <CardTitle className="font-heading text-lg flex items-center gap-2">
               <Baby className="w-5 h-5 text-primary" />
-              عداد حركة الجنين — جلسة ساعتين
+              متابعة نشاط الجنين
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-center space-y-3">
+          <CardContent className="p-6">
+            <div className="text-center space-y-4">
               <TimerRing progress={progress} timeLabel={formatTime(remaining)} />
 
-              <div className="text-5xl font-heading font-bold gradient-text transition-all">
+              <div className="text-6xl font-heading font-bold text-foreground transition-all">
                 {kicks}
               </div>
-              <p className="text-sm text-muted-foreground">ركلات مسجلة</p>
+              <p className="text-sm font-medium text-muted-foreground">ركلات مسجلة اليوم</p>
 
-              <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+              <div className="w-full bg-muted/50 rounded-full h-3 overflow-hidden mt-4">
                 <div
-                  className="h-2 rounded-full bg-gradient-to-l from-primary to-primary/60 transition-all duration-300"
+                  className="h-3 rounded-full bg-gradient-to-l from-primary to-primary/60 transition-all duration-300 shadow-inner"
                   style={{ width: `${kickProgress}%` }}
                 />
               </div>
-              <p className="text-xs text-muted-foreground text-left">
-                {kicks >= KICK_GOAL ? "✓ تم تحقيق الهدف!" : `الهدف: ${KICK_GOAL} ركلات خلال الجلسة`}
+              <p className="text-xs font-medium text-muted-foreground text-left mt-2">
+                {kicks >= KICK_GOAL ? "✓ اكتمل الهدف اليومي!" : `الهدف: ${KICK_GOAL} ركلات`}
               </p>
 
-              <div className="flex items-center justify-center gap-3 pt-1">
-                <Button variant="outline" size="icon" onClick={undoKick} disabled={!isActive || kicks === 0} title="تراجع"><Minus className="h-4 w-4" /></Button>
-                <Button size="lg" className="rounded-full w-16 h-16 text-lg shadow-lg" onClick={addKick} disabled={!isActive}><Plus className="h-6 w-6" /></Button>
-                <Button variant="outline" size="icon" onClick={resetFMC} title="إعادة تعيين"><RotateCcw className="h-4 w-4" /></Button>
+              <div className="flex items-center justify-center gap-4 pt-4">
+                <Button variant="outline" size="icon" onClick={undoKick} disabled={!isActive || kicks === 0} title="تراجع" className="h-12 w-12 rounded-full"><Minus className="h-5 w-5" /></Button>
+                <Button size="lg" className="rounded-full w-20 h-20 text-lg shadow-md hover:shadow-lg hover:scale-105 transition-all" onClick={addKick} disabled={!isActive}><Plus className="h-8 w-8" /></Button>
+                <Button variant="outline" size="icon" onClick={resetFMC} title="إعادة تعيين" className="h-12 w-12 rounded-full"><RotateCcw className="h-5 w-5" /></Button>
               </div>
 
               {/* أزرار التحكم بالجلسة والإرسال المبكر */}
-              {fmcStatus === "idle" && (
-                <Button className="w-full" onClick={startFMC}>
-                  <Play className="w-4 h-4 ml-2" /> بدء الجلسة
-                </Button>
-              )}
-              {fmcStatus === "running" && (
-                <div className="flex gap-2 w-full pt-2">
-                  <Button variant="outline" className="flex-1" onClick={pauseFMC} disabled={sendingReport}>
-                    <Pause className="w-4 h-4 ml-2" /> إيقاف مؤقت
+              <div className="pt-6">
+                {fmcStatus === "idle" && (
+                  <Button className="w-full h-12 text-md shadow-sm" onClick={startFMC}>
+                    <Play className="w-5 h-5 ml-2" /> ابدأ جلسة المتابعة
                   </Button>
-                  <Button variant="destructive" className="flex-1" onClick={sendEarlyReport} disabled={sendingReport}>
-                    <Send className="w-4 h-4 ml-2" /> إنهاء وإرسال الآن
-                  </Button>
-                </div>
-              )}
-              {fmcStatus === "paused" && (
-                <div className="flex gap-2 w-full pt-2">
-                  <Button className="flex-1" onClick={resumeFMC} disabled={sendingReport}>
-                    <Play className="w-4 h-4 ml-2" /> استئناف
-                  </Button>
-                  <Button variant="destructive" className="flex-1" onClick={sendEarlyReport} disabled={sendingReport}>
-                    <Send className="w-4 h-4 ml-2" /> إنهاء وإرسال الآن
-                  </Button>
-                </div>
-              )}
+                )}
+                {fmcStatus === "running" && (
+                  <div className="flex gap-3 w-full">
+                    <Button variant="outline" className="flex-1 h-12" onClick={pauseFMC} disabled={sendingReport}>
+                      <Pause className="w-4 h-4 ml-2" /> إيقاف
+                    </Button>
+                    <Button variant="destructive" className="flex-1 h-12 shadow-sm" onClick={sendEarlyReport} disabled={sendingReport}>
+                      <Send className="w-4 h-4 ml-2" /> إنهاء وإرسال
+                    </Button>
+                  </div>
+                )}
+                {fmcStatus === "paused" && (
+                  <div className="flex gap-3 w-full">
+                    <Button className="flex-1 h-12 shadow-sm" onClick={resumeFMC} disabled={sendingReport}>
+                      <Play className="w-4 h-4 ml-2" /> استئناف
+                    </Button>
+                    <Button variant="destructive" className="flex-1 h-12 shadow-sm" onClick={sendEarlyReport} disabled={sendingReport}>
+                      <Send className="w-4 h-4 ml-2" /> إنهاء وإرسال
+                    </Button>
+                  </div>
+                )}
+              </div>
 
               {kicks >= KICK_GOAL && fmcStatus !== "done" && (
-                <Badge className="bg-success text-success-foreground mt-2">✓ تم الوصول للهدف! +{KICK_GOAL} ركلات</Badge>
+                <Badge className="bg-success/10 text-success border-success/20 mt-4 text-sm py-1.5 px-3">✓ تم الوصول للهدف! +{KICK_GOAL} ركلات</Badge>
               )}
 
               {/* Session report */}
               {fmcStatus === "done" && report && (
-                <div className="mt-4 rounded-xl border border-border bg-muted/40 p-4 text-sm text-right space-y-2">
-                  <p className="font-heading font-semibold text-base flex items-center gap-2">
-                    {report.goalMet ? <CheckCircle2 className="w-4 h-4 text-success" /> : <AlertCircle className="w-4 h-4 text-warning" />}
+                <div className="mt-6 rounded-xl border border-transparent bg-muted/30 p-5 text-sm text-right space-y-3">
+                  <p className="font-heading font-semibold text-lg flex items-center gap-2 mb-2">
+                    {report.goalMet ? <CheckCircle2 className="w-5 h-5 text-success" /> : <AlertCircle className="w-5 h-5 text-warning" />}
                     تقرير الجلسة
                   </p>
                   {[
@@ -520,14 +416,14 @@ export default function PatientDashboard() {
                     ["تحقق الهدف", report.goalMet ? "نعم ✓" : `لا — ${report.kicks} من ${KICK_GOAL}`],
                     ["الحالة", report.status === "normal" ? "طبيعي" : "يستدعي المتابعة"],
                   ].map(([k, v]) => (
-                    <div key={k} className="flex justify-between text-xs">
+                    <div key={k} className="flex justify-between text-sm py-1 border-b border-border/40 last:border-0">
                       <span className="text-muted-foreground">{k}</span>
-                      <span className="font-medium">{v}</span>
+                      <span className="font-semibold text-foreground">{v}</span>
                     </div>
                   ))}
-                  <Button className="w-full mt-2" onClick={sendFMCReport} disabled={sendingReport}>
+                  <Button className="w-full mt-4 h-11" onClick={sendFMCReport} disabled={sendingReport}>
                     <Send className="w-4 h-4 ml-2" />
-                    {sendingReport ? "جارٍ الإرسال…" : "إرسال التقرير للطبيبة"}
+                    {sendingReport ? "جارٍ الإرسال…" : "إرسال التقرير للطبيبة الآن"}
                   </Button>
                 </div>
               )}
@@ -536,13 +432,13 @@ export default function PatientDashboard() {
         </Card>
 
         {/* ── Appointments Card ── */}
-        <Card className="glass-card">
-          <CardHeader>
+        <Card className="glass-card shadow-sm border-transparent bg-white dark:bg-card">
+          <CardHeader className="border-b bg-muted/10 pb-4">
             <CardTitle className="font-heading text-lg flex items-center gap-2">
-              <CalendarDays className="w-5 h-5 text-primary" /> المواعيد
+              <CalendarDays className="w-5 h-5 text-primary" /> مواعيدي
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-5">
+          <CardContent className="p-6 space-y-6">
             {upcomingAppts.length > 0 ? (
               <div className="space-y-2">
                 <p className="text-xs text-muted-foreground font-medium">المواعيد القادمة</p>
@@ -563,38 +459,50 @@ export default function PatientDashboard() {
 
             <div className="border-t border-border pt-4 space-y-3">
               <p className="text-xs font-medium text-muted-foreground">حجز موعد جديد</p>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-xs">التاريخ</Label>
-                  <Input type="date" value={apptForm.date} onChange={(e) => handleApptChange("date", e.target.value)} className="text-sm" />
+              <form onSubmit={handleSubmit(onSubmitAppointment)} className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">التاريخ</Label>
+                    <Input type="date" {...register("date")} className={`text-sm ${errors.date ? 'border-destructive' : ''}`} />
+                    {errors.date && <p className="text-[10px] text-destructive">{errors.date.message}</p>}
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">الوقت</Label>
+                    <Input type="time" {...register("time")} className={`text-sm ${errors.time ? 'border-destructive' : ''}`} />
+                    {errors.time && <p className="text-[10px] text-destructive">{errors.time.message}</p>}
+                  </div>
                 </div>
+                
                 <div className="space-y-1">
-                  <Label className="text-xs">الوقت</Label>
-                  <Input type="time" value={apptForm.time} onChange={(e) => handleApptChange("time", e.target.value)} className="text-sm" />
+                  <Label className="text-xs">اسم الطبيب</Label>
+                  <Input placeholder="د. سارة أحمد" {...register("doctor")} className={`text-sm ${errors.doctor ? 'border-destructive' : ''}`} />
+                  {errors.doctor && <p className="text-[10px] text-destructive">{errors.doctor.message}</p>}
                 </div>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">اسم الطبيب</Label>
-                <Input placeholder="د. سارة أحمد" value={apptForm.doctor} onChange={(e) => handleApptChange("doctor", e.target.value)} className="text-sm" />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">نوع الموعد</Label>
-                <Select value={apptForm.type} onValueChange={(v) => handleApptChange("type", v)}>
-                  <SelectTrigger className="text-sm"><SelectValue placeholder="اختر النوع" /></SelectTrigger>
-                  <SelectContent>
-                    {["متابعة دورية", "فحص بالموجات فوق الصوتية", "اختبار سكر الحمل", "فحص ضغط الدم", "استشارة طبية"].map((t) => (
-                      <SelectItem key={t} value={t}>{t}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">ملاحظات (اختياري)</Label>
-                <Input placeholder="أي تفاصيل إضافية" value={apptForm.notes} onChange={(e) => handleApptChange("notes", e.target.value)} className="text-sm" />
-              </div>
-              <Button className="w-full" onClick={bookAppointment} disabled={bookingLoading}>
-                {bookingLoading ? "جارٍ الحجز…" : "تأكيد الحجز"}
-              </Button>
+                
+                <div className="space-y-1">
+                  <Label className="text-xs">نوع الموعد</Label>
+                  <Select onValueChange={(val) => setValue("type", val, { shouldValidate: true })}>
+                    <SelectTrigger className={`text-sm ${errors.type ? 'border-destructive' : ''}`}>
+                      <SelectValue placeholder="اختر النوع" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {["متابعة دورية", "فحص بالموجات فوق الصوتية", "اختبار سكر الحمل", "فحص ضغط الدم", "استشارة طبية"].map((t) => (
+                        <SelectItem key={t} value={t}>{t}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {errors.type && <p className="text-[10px] text-destructive">{errors.type.message}</p>}
+                </div>
+                
+                <div className="space-y-1">
+                  <Label className="text-xs">ملاحظات (اختياري)</Label>
+                  <Input placeholder="أي تفاصيل إضافية" {...register("notes")} className="text-sm" />
+                </div>
+                
+                <Button type="submit" className="w-full" disabled={isSubmitting}>
+                  {isSubmitting ? "جارٍ الحجز…" : "تأكيد الحجز"}
+                </Button>
+              </form>
             </div>
           </CardContent>
         </Card>

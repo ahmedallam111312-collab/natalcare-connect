@@ -125,9 +125,10 @@ const App = () => {
               email: firebaseUser.email!,
               displayName: userData.displayName || "User",
               role: userData.role || "patient",
+              profileCompleted: userData.profileCompleted || false,
             });
           } else {
-            setUser({ uid: firebaseUser.uid, email: firebaseUser.email!, displayName: "New User", role: "patient" });
+            setUser({ uid: firebaseUser.uid, email: firebaseUser.email!, displayName: "New User", role: "patient", profileCompleted: false });
           }
         } else {
           setUser(null);

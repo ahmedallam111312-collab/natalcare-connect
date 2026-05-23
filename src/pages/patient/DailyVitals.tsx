@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,127 +6,89 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Activity, Plus, TrendingUp, AlertTriangle, Loader2, HeartPulse, Droplet, Scale } from "lucide-react";
-import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp } from "firebase/firestore";
-import { db } from "@/services/firebase";
 import { useAuthStore } from "@/stores/authStore";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from "recharts";
 import { toast } from "sonner";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { usePatientData } from "@/hooks/usePatientData";
+import { patientService } from "@/services/patientService";
+
+// --- Form Validation Schema ---
+const vitalsSchema = z.object({
+  bloodPressureSystolic: z.union([z.string(), z.number()]).optional(),
+  bloodPressureDiastolic: z.union([z.string(), z.number()]).optional(),
+  bloodSugar: z.union([z.string(), z.number()]).optional(),
+  weight: z.union([z.string(), z.number()]).optional(),
+}).refine((data) => {
+  // Ensure at least one field is provided
+  return data.bloodPressureSystolic || data.bloodPressureDiastolic || data.bloodSugar || data.weight;
+}, {
+  message: "يرجى إدخال قيمة واحدة على الأقل",
+  path: ["root"]
+}).refine((data) => {
+  // Ensure both systolic and diastolic are provided together if one is provided
+  const sys = !!data.bloodPressureSystolic;
+  const dia = !!data.bloodPressureDiastolic;
+  return sys === dia;
+}, {
+  message: "يرجى إدخال قيمتي الضغط معاً",
+  path: ["bloodPressureSystolic"] // Just point to one
+});
+
+type VitalsFormValues = z.infer<typeof vitalsSchema>;
 
 export default function DailyVitals() {
   const { user } = useAuthStore();
-  const [history, setHistory] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const { vitalsHistory } = usePatientData(user?.uid);
   
-  // States
-  const [bpSystolic, setBpSystolic] = useState("");
-  const [bpDiastolic, setBpDiastolic] = useState("");
-  const [sugar, setSugar] = useState("");
-  const [weight, setWeight] = useState("");
-
-  // Fetch Vitals
-  useEffect(() => {
-    if (!user) return;
-    const q = query(collection(db, "users", user.uid, "vitals"), orderBy("createdAt", "desc"));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const vitalsData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-      setHistory(vitalsData);
-    });
-    return () => unsubscribe();
-  }, [user]);
-
-  // Submit Logic
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user) return;
-
-    // تحويل القيم إلى أرقام (أو null إذا كانت فارغة)
-    const sys = bpSystolic ? Number(bpSystolic) : null;
-    const dia = bpDiastolic ? Number(bpDiastolic) : null;
-    const sug = sugar ? Number(sugar) : null;
-    const wgt = weight ? Number(weight) : null;
-
-    // التأكد من إدخال قيمة واحدة على الأقل
-    if (!sys && !dia && !sug && !wgt) {
-      toast.error("يرجى إدخال قيمة واحدة على الأقل (ضغط، سكر، أو وزن)");
-      return;
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<VitalsFormValues>({
+    resolver: zodResolver(vitalsSchema),
+    defaultValues: {
+      bloodPressureSystolic: "",
+      bloodPressureDiastolic: "",
+      bloodSugar: "",
+      weight: ""
     }
+  });
 
-    // إذا أدخلت الانقباضي يجب أن تدخل الانبساطي والعكس
-    if ((sys && !dia) || (!sys && dia)) {
-      toast.error("يرجى إدخال قيمتي الضغط الانقباضي والانبساطي معاً");
-      return;
-    }
-
-    setIsLoading(true);
-
+  const onSubmit = async (data: VitalsFormValues) => {
+    if (!user) return;
     try {
-      let status = "normal";
-      let alertMessage = "";
-
-      // فحص القيم الحرجة لإنشاء إنذار للطبيب
-      if (sys && sys >= 140 || dia && dia >= 90) {
-        status = "critical";
-        alertMessage = `ارتفاع في ضغط الدم (${sys}/${dia})`;
-      } else if (sug && sug >= 140) {
-        status = "critical";
-        alertMessage = `ارتفاع في مستوى السكر (${sug} mg/dL)`;
-      } else if (sys && sys <= 90 || dia && dia <= 60) {
-        status = "warning";
-        alertMessage = `انخفاض ملحوظ في ضغط الدم (${sys}/${dia})`;
-      }
-
-      // تجهيز البيانات (نرسل فقط الحقول التي تحتوي على قيم)
-      const payload: any = {
-        date: new Date().toLocaleDateString("ar-EG", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }),
-        createdAt: serverTimestamp(),
-        status: status
+      const payload = {
+        bloodPressureSystolic: data.bloodPressureSystolic ? Number(data.bloodPressureSystolic) : undefined,
+        bloodPressureDiastolic: data.bloodPressureDiastolic ? Number(data.bloodPressureDiastolic) : undefined,
+        bloodSugar: data.bloodSugar ? Number(data.bloodSugar) : undefined,
+        weight: data.weight ? Number(data.weight) : undefined,
       };
 
-      if (sys && dia) {
-        payload.bloodPressureSystolic = sys;
-        payload.bloodPressureDiastolic = dia;
-      }
-      if (sug) payload.bloodSugar = sug;
-      if (wgt) payload.weight = wgt;
-
-      // 1. حفظ المؤشرات في ملف المريضة
-      await addDoc(collection(db, "users", user.uid, "vitals"), payload);
-
-      // 2. إذا كانت الحالة حرجة أو تحذيرية، نرسل إشعاراً للطبيب فوراً!
-      if (status !== "normal") {
-        await addDoc(collection(db, "alerts"), {
-          patientId: user.uid,
-          patientName: user.displayName,
-          type: "vitals",
-          message: `تنبيه مؤشرات حيوية: ${alertMessage}`,
-          severity: status === "critical" ? "high" : "moderate",
-          acknowledged: false,
-          createdAt: serverTimestamp(),
-        });
-        toast.warning("تم تسجيل القراءة بنجاح، وتم إبلاغ طبيبك بالمؤشرات لمتابعتك.", { icon: "⚠️", duration: 5000 });
+      const result = await patientService.submitVitals(user.uid, user.displayName || "مريضة", payload);
+      
+      if (result.status !== "normal") {
+        toast.warning(`تم إبلاغ طبيبك: ${result.alertMessage}`, { icon: "⚠️", duration: 5000 });
       } else {
         toast.success("تم حفظ المؤشرات بنجاح ✓");
       }
-
-      // تصفير الحقول
-      setBpSystolic(""); setBpDiastolic(""); setSugar(""); setWeight("");
+      reset();
     } catch (error) {
       console.error("Error saving vitals:", error);
       toast.error("حدث خطأ أثناء الحفظ");
-    } finally {
-      setIsLoading(false);
     }
   };
 
-  // دالة مساعدة لرسم شارة الحالة
   const getStatusBadge = (status: string) => {
     if (status === "critical") return <Badge variant="destructive" className="animate-pulse"><AlertTriangle className="w-3 h-3 ml-1"/> حرج</Badge>;
     if (status === "warning") return <Badge variant="outline" className="text-warning border-warning/30 bg-warning/5">انتباه</Badge>;
     return <Badge variant="outline" className="text-success border-success/30 bg-success/5">طبيعي</Badge>;
   };
 
-  // تجهيز البيانات للرسم البياني (عكس المصفوفة لتكون من الأقدم للأحدث)
-  const chartData = [...history].reverse();
+  const chartData = [...vitalsHistory].reverse();
 
   return (
     <div className="space-y-6 animate-fade-in" dir="rtl">
@@ -137,9 +99,7 @@ export default function DailyVitals() {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
-        {/* ================================== */}
-        {/* قسم إدخال البيانات */}
-        {/* ================================== */}
+        {/* --- Data Entry Form --- */}
         <Card className="glass-card lg:col-span-5 h-fit border-primary/20">
           <CardHeader className="bg-primary/5 border-b pb-4">
             <CardTitle className="font-heading text-lg flex items-center gap-2 text-primary">
@@ -147,53 +107,56 @@ export default function DailyVitals() {
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-6">
-            <form onSubmit={handleSubmit} className="space-y-5">
-              
-              {/* الضغط */}
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+              {errors.root && <div className="p-3 rounded-md bg-destructive/10 text-destructive text-sm">{errors.root.message}</div>}
+
+              {/* Blood Pressure */}
               <div className="space-y-3 p-4 rounded-xl border bg-card shadow-sm">
                 <h3 className="text-sm font-bold flex items-center gap-2"><HeartPulse className="w-4 h-4 text-destructive" /> ضغط الدم</h3>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <Label className="text-xs text-muted-foreground">الانقباضي (Systolic)</Label>
-                    <Input type="number" placeholder="مثال: 120" value={bpSystolic} onChange={(e) => setBpSystolic(e.target.value)} />
+                    <Input type="number" placeholder="120" {...register("bloodPressureSystolic")} className={errors.bloodPressureSystolic ? "border-destructive" : ""} />
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs text-muted-foreground">الانبساطي (Diastolic)</Label>
-                    <Input type="number" placeholder="مثال: 80" value={bpDiastolic} onChange={(e) => setBpDiastolic(e.target.value)} />
+                    <Input type="number" placeholder="80" {...register("bloodPressureDiastolic")} className={errors.bloodPressureDiastolic ? "border-destructive" : ""} />
                   </div>
                 </div>
+                {(errors.bloodPressureSystolic || errors.bloodPressureDiastolic) && (
+                  <p className="text-xs text-destructive mt-1">يرجى إدخال قيمتي الضغط معاً</p>
+                )}
               </div>
 
-              {/* السكر والوزن */}
               <div className="grid grid-cols-2 gap-4">
+                {/* Blood Sugar */}
                 <div className="space-y-3 p-4 rounded-xl border bg-card shadow-sm">
                   <h3 className="text-sm font-bold flex items-center gap-2"><Droplet className="w-4 h-4 text-blue-500" /> سكر الدم</h3>
                   <div className="space-y-1">
                     <Label className="text-xs text-muted-foreground">القياس (mg/dL)</Label>
-                    <Input type="number" placeholder="مثال: 95" value={sugar} onChange={(e) => setSugar(e.target.value)} />
+                    <Input type="number" placeholder="95" {...register("bloodSugar")} />
                   </div>
                 </div>
 
+                {/* Weight */}
                 <div className="space-y-3 p-4 rounded-xl border bg-card shadow-sm">
                   <h3 className="text-sm font-bold flex items-center gap-2"><Scale className="w-4 h-4 text-emerald-500" /> الوزن</h3>
                   <div className="space-y-1">
                     <Label className="text-xs text-muted-foreground">بالكيلوجرام (kg)</Label>
-                    <Input type="number" step="0.1" placeholder="مثال: 68.5" value={weight} onChange={(e) => setWeight(e.target.value)} />
+                    <Input type="number" step="0.1" placeholder="68.5" {...register("weight")} />
                   </div>
                 </div>
               </div>
 
-              <Button type="submit" className="w-full h-12 text-md shadow-md" disabled={isLoading}>
-                {isLoading ? <Loader2 className="ml-2 h-5 w-5 animate-spin" /> : <Activity className="ml-2 h-5 w-5" />}
-                {isLoading ? "جاري الحفظ..." : "حفظ المؤشرات المدخلة"}
+              <Button type="submit" className="w-full h-12 text-md shadow-md" disabled={isSubmitting}>
+                {isSubmitting ? <Loader2 className="ml-2 h-5 w-5 animate-spin" /> : <Activity className="ml-2 h-5 w-5" />}
+                {isSubmitting ? "جاري الحفظ..." : "حفظ المؤشرات المدخلة"}
               </Button>
             </form>
           </CardContent>
         </Card>
 
-        {/* ================================== */}
-        {/* قسم الرسوم البيانية المتعددة */}
-        {/* ================================== */}
+        {/* --- Charts --- */}
         <Card className="glass-card lg:col-span-7 flex flex-col">
           <CardHeader className="pb-2">
             <CardTitle className="font-heading text-lg flex items-center gap-2">
@@ -208,12 +171,11 @@ export default function DailyVitals() {
                 <TabsTrigger value="weight">الوزن</TabsTrigger>
               </TabsList>
               
-              {/* رسم ضغط الدم */}
               <TabsContent value="bp" className="flex-1 min-h-[250px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={chartData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                    <XAxis dataKey="date" fontSize={10} stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => v.split(',')[0]} />
+                    <XAxis dataKey="date" fontSize={10} stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => typeof v === 'string' ? v.split(',')[0] : ''} />
                     <YAxis fontSize={12} stroke="hsl(var(--muted-foreground))" orientation="right" domain={['dataMin - 10', 'dataMax + 10']} />
                     <Tooltip contentStyle={{ borderRadius: "8px", textAlign: "right", direction: "rtl" }} />
                     <Line type="monotone" connectNulls dataKey="bloodPressureSystolic" stroke="hsl(var(--destructive))" strokeWidth={3} name="انقباضي" dot={{ r: 4 }} activeDot={{ r: 6 }} />
@@ -222,7 +184,6 @@ export default function DailyVitals() {
                 </ResponsiveContainer>
               </TabsContent>
 
-              {/* رسم السكر */}
               <TabsContent value="sugar" className="flex-1 min-h-[250px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={chartData}>
@@ -233,7 +194,7 @@ export default function DailyVitals() {
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                    <XAxis dataKey="date" fontSize={10} stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => v.split(',')[0]} />
+                    <XAxis dataKey="date" fontSize={10} stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => typeof v === 'string' ? v.split(',')[0] : ''} />
                     <YAxis fontSize={12} stroke="hsl(var(--muted-foreground))" orientation="right" domain={['dataMin - 10', 'dataMax + 10']} />
                     <Tooltip contentStyle={{ borderRadius: "8px", textAlign: "right" }} />
                     <Area type="monotone" connectNulls dataKey="bloodSugar" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorSugar)" name="مستوى السكر" />
@@ -241,7 +202,6 @@ export default function DailyVitals() {
                 </ResponsiveContainer>
               </TabsContent>
 
-              {/* رسم الوزن */}
               <TabsContent value="weight" className="flex-1 min-h-[250px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={chartData}>
@@ -252,7 +212,7 @@ export default function DailyVitals() {
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                    <XAxis dataKey="date" fontSize={10} stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => v.split(',')[0]} />
+                    <XAxis dataKey="date" fontSize={10} stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => typeof v === 'string' ? v.split(',')[0] : ''} />
                     <YAxis fontSize={12} stroke="hsl(var(--muted-foreground))" orientation="right" domain={['dataMin - 2', 'dataMax + 2']} />
                     <Tooltip contentStyle={{ borderRadius: "8px", textAlign: "right" }} />
                     <Area type="monotone" connectNulls dataKey="weight" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorWeight)" name="الوزن (كجم)" />
@@ -265,9 +225,7 @@ export default function DailyVitals() {
         </Card>
       </div>
 
-      {/* ================================== */}
-      {/* جدول السجلات */}
-      {/* ================================== */}
+      {/* --- History Table --- */}
       <Card className="glass-card">
         <CardHeader><CardTitle className="font-heading text-lg">سجل القراءات السابقة</CardTitle></CardHeader>
         <CardContent>
@@ -283,7 +241,7 @@ export default function DailyVitals() {
                 </tr>
               </thead>
               <tbody>
-                {history.map((v) => (
+                {vitalsHistory.map((v: any) => (
                   <tr key={v.id} className="border-b border-border/50 hover:bg-muted/10 transition-colors">
                     <td className="py-3 px-4 text-xs font-medium text-muted-foreground">{v.date}</td>
                     <td className="py-3 px-4 font-bold" dir="ltr">
@@ -300,7 +258,7 @@ export default function DailyVitals() {
                     </td>
                   </tr>
                 ))}
-                {history.length === 0 && (
+                {vitalsHistory.length === 0 && (
                   <tr><td colSpan={5} className="text-center py-8 text-muted-foreground">لم يتم تسجيل أي مؤشرات بعد.</td></tr>
                 )}
               </tbody>

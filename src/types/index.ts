@@ -6,6 +6,7 @@ export interface User {
   displayName: string;
   role: UserRole;
   photoURL?: string;
+  profileCompleted?: boolean;
 }
 
 export interface VitalRecord {

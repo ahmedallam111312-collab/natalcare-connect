@@ -1,48 +1,22 @@
-import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Users, AlertTriangle, CalendarDays, Clock, Activity, ChevronLeft } from "lucide-react";
-import { collection, query, onSnapshot, where, collectionGroup, orderBy } from "firebase/firestore";
-import { db } from "@/services/firebase";
+import { Button } from "@/components/ui/button";
+import { Users, AlertTriangle, CalendarDays, Activity, ChevronLeft, ArrowUpRight, MessageSquare } from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
+import { useDoctorData } from "@/hooks/useDoctorData";
+import { useNavigate } from "react-router-dom";
 
 export default function DoctorDashboard() {
   const { user } = useAuthStore();
-  const [patients, setPatients] = useState<any[]>([]);
-  const [alerts, setAlerts] = useState<any[]>([]);
-  const [appointments, setAppointments] = useState<any[]>([]);
-  const [stats, setStats] = useState({ active: 0, highRisk: 0 });
+  const navigate = useNavigate();
+  const { patients, alerts, appointments, isLoading } = useDoctorData(user?.uid);
 
-  useEffect(() => {
-    if (!user) return;
+  const stats = {
+    active: patients.length,
+    highRisk: patients.filter(p => p.riskLevel === "high").length,
+    todayAppts: appointments.filter(a => a.date === new Date().toISOString().split('T')[0]).length
+  };
 
-    // 1. جلب جميع المرضى
-    const qPatients = query(collection(db, "users"), where("role", "==", "patient"));
-    const unsubPatients = onSnapshot(qPatients, (snap) => {
-      const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setPatients(data);
-      setStats({
-        active: data.length,
-        highRisk: data.filter(p => p.riskLevel === "high").length
-      });
-    });
-
-    // 2. جلب جميع التنبيهات والتقارير (مرتبة حسب الأهمية: عالي ثم متوسط)
-    const qAlerts = query(collection(db, "alerts"), orderBy("severity", "desc"));
-    const unsubAlerts = onSnapshot(qAlerts, (snap) => {
-      setAlerts(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    });
-
-    // 3. جلب كافة المواعيد لتحديد الزيارة السابقة والقادمة
-    const qAppts = collectionGroup(db, "appointments");
-    const unsubAppts = onSnapshot(qAppts, (snap) => {
-      setAppointments(snap.docs.map(doc => ({ id: doc.id, userId: doc.ref.parent.parent?.id, ...doc.data() })));
-    });
-
-    return () => { unsubPatients(); unsubAlerts(); unsubAppts(); };
-  }, [user]);
-
-  // دالة لاستخراج تاريخ الزيارة السابقة والقادمة لكل مريض
   const getVisitDates = (patientId: string) => {
     const patientAppts = appointments.filter(a => a.userId === patientId);
     const now = new Date();
@@ -57,110 +31,175 @@ export default function DoctorDashboard() {
 
     return { 
       last: past ? past.date : "---", 
-      next: future ? future.date : "لم يحدد" 
+      next: future ? future.date : "غير مجدول" 
     };
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex h-[50vh] items-center justify-center">
+        <div className="flex flex-col items-center gap-4 text-muted-foreground">
+          <Activity className="w-8 h-8 animate-spin text-primary" />
+          <p>جاري تحميل البيانات...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6 animate-fade-in" dir="rtl">
+    <div className="space-y-8 animate-fade-in" dir="rtl">
       <div>
-        <h1 className="text-2xl font-heading font-bold">لوحة التحكم</h1>
-        <p className="text-muted-foreground text-sm mt-1">نظرة شاملة على حالة المرضى والتنبيهات العاجلة</p>
+        <h1 className="text-3xl font-heading font-bold text-foreground">الرئيسية</h1>
+        <p className="text-muted-foreground mt-2 text-sm">مرحباً د. {user?.displayName}، إليك ملخص سريع لحالة مرضاك اليوم.</p>
       </div>
 
-      {/* بطاقات الإحصائيات */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <Card className="glass-card border-primary/20 bg-primary/5">
-          <CardContent className="pt-5 flex items-center gap-4">
-            <Users className="w-8 h-8 text-primary" />
-            <div>
-              <p className="text-xs text-muted-foreground">إجمالي المريضات</p>
-              <p className="text-2xl font-bold">{stats.active}</p>
+      {/* KPI Cards (Progressive Disclosure & Calm Design) */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card className="glass-card hover:shadow-lg transition-shadow border-transparent bg-white dark:bg-card">
+          <CardContent className="p-6 flex items-center justify-between">
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-muted-foreground">المرضى النشطين</p>
+              <p className="text-3xl font-bold font-heading">{stats.active}</p>
+            </div>
+            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+              <Users className="w-6 h-6 text-primary" />
             </div>
           </CardContent>
         </Card>
-        <Card className="glass-card border-destructive/20 bg-destructive/5">
-          <CardContent className="pt-5 flex items-center gap-4">
-            <AlertTriangle className="w-8 h-8 text-destructive" />
-            <div>
-              <p className="text-xs text-muted-foreground">حالات عالية الخطورة</p>
-              <p className="text-2xl font-bold">{stats.highRisk}</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="glass-card border-success/20 bg-success/5">
-          <CardContent className="pt-5 flex items-center gap-4">
-            <CalendarDays className="w-8 h-8 text-success" />
-            <div>
-              <p className="text-xs text-muted-foreground">مواعيد اليوم</p>
-              <p className="text-2xl font-bold">{appointments.filter(a => a.date === new Date().toISOString().split('T')[0]).length}</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         
-        {/* القائمة 1: حالة المريضات (الأسبوع، الزيارة السابقة، القادمة) */}
-        <Card className="glass-card flex flex-col min-h-[400px]">
-          <CardHeader className="border-b pb-3 bg-muted/30">
-            <CardTitle className="text-lg font-heading flex items-center gap-2">
-              <Activity className="w-5 h-5 text-primary" /> حالة المريضات والمواعيد
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-0 overflow-y-auto">
-            <div className="divide-y">
-              {patients.map((p) => {
-                const visits = getVisitDates(p.id);
-                return (
-                  <div key={p.id} className="p-4 hover:bg-muted/30 transition-colors flex items-center justify-between">
-                    <div className="space-y-1">
-                      <p className="font-bold text-sm">{p.displayName || "مريضة"}</p>
-                      <Badge variant="secondary" className="text-[10px]">الأسبوع {p.week || "-"}</Badge>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4 text-center">
-                      <div className="px-3">
-                        <p className="text-[10px] text-muted-foreground mb-1">آخر زيارة</p>
-                        <p className="text-xs font-medium">{visits.last}</p>
-                      </div>
-                      <div className="px-3 border-r">
-                        <p className="text-[10px] text-primary mb-1">الزيارة القادمة</p>
-                        <p className="text-xs font-bold text-primary">{visits.next}</p>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+        <Card className="glass-card hover:shadow-lg transition-shadow border-transparent bg-white dark:bg-card">
+          <CardContent className="p-6 flex items-center justify-between">
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-muted-foreground">حالات المتابعة الحرجة</p>
+              <p className="text-3xl font-bold font-heading text-destructive">{stats.highRisk}</p>
+            </div>
+            <div className="w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center">
+              <AlertTriangle className="w-6 h-6 text-destructive" />
             </div>
           </CardContent>
         </Card>
 
-        {/* القائمة 2: التنبيهات والتقارير (بترتيب الأهمية) */}
-        <Card className="glass-card flex flex-col min-h-[400px]">
-          <CardHeader className="border-b pb-3 bg-destructive/5">
-            <CardTitle className="text-lg font-heading flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-destructive" /> تنبيهات هامة (مرتبة بالأولوية)
-            </CardTitle>
+        <Card className="glass-card hover:shadow-lg transition-shadow border-transparent bg-white dark:bg-card">
+          <CardContent className="p-6 flex items-center justify-between">
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-muted-foreground">مواعيد اليوم</p>
+              <p className="text-3xl font-bold font-heading text-success">{stats.todayAppts}</p>
+            </div>
+            <div className="w-12 h-12 rounded-full bg-success/10 flex items-center justify-center">
+              <CalendarDays className="w-6 h-6 text-success" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+        
+        {/* Patient Roster (Actionable Table) */}
+        <Card className="glass-card border-transparent shadow-sm flex flex-col h-full bg-white dark:bg-card">
+          <CardHeader className="pb-4">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-xl font-heading flex items-center gap-2">
+                سجل المرضى
+              </CardTitle>
+              <Button variant="ghost" size="sm" className="text-primary hover:bg-primary/5" onClick={() => navigate('/doctor/patients')}>
+                عرض الكل <ChevronLeft className="w-4 h-4 ml-1" />
+              </Button>
+            </div>
+            <CardDescription>قائمة بأحدث المريضات اللاتي يحتاجن لمتابعة.</CardDescription>
           </CardHeader>
-          <CardContent className="p-0 overflow-y-auto">
-            <div className="divide-y">
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-right">
+                <thead>
+                  <tr className="border-b bg-muted/20 text-muted-foreground">
+                    <th className="py-3 px-6 font-medium">اسم المريضة</th>
+                    <th className="py-3 px-6 font-medium">أسبوع الحمل</th>
+                    <th className="py-3 px-6 font-medium">الموعد القادم</th>
+                    <th className="py-3 px-6 font-medium text-left">إجراء</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/50">
+                  {patients.slice(0, 5).map((p) => {
+                    const visits = getVisitDates(p.id);
+                    return (
+                      <tr key={p.id} className="hover:bg-muted/10 transition-colors group">
+                        <td className="py-4 px-6">
+                          <div className="font-semibold">{p.displayName || "مريضة"}</div>
+                          {p.riskLevel === "high" && <Badge variant="destructive" className="mt-1 text-[10px] px-1.5 py-0">عالي الخطورة</Badge>}
+                        </td>
+                        <td className="py-4 px-6 text-muted-foreground">{p.week ? `الأسبوع ${p.week}` : "-"}</td>
+                        <td className="py-4 px-6 font-medium text-primary">{visits.next}</td>
+                        <td className="py-4 px-6 text-left">
+                          <Button variant="outline" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => navigate('/doctor/chat')}>
+                            <MessageSquare className="w-4 h-4 ml-2" />
+                            مراسلة
+                          </Button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {patients.length === 0 && (
+                    <tr>
+                      <td colSpan={4} className="py-12 text-center text-muted-foreground">
+                        لا يوجد مرضى حالياً.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Priority Alerts (Traffic Light Logic) */}
+        <Card className="glass-card border-transparent shadow-sm flex flex-col h-full bg-white dark:bg-card">
+          <CardHeader className="pb-4">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-xl font-heading flex items-center gap-2">
+                التنبيهات السريرية
+              </CardTitle>
+              <Button variant="ghost" size="sm" className="text-primary hover:bg-primary/5" onClick={() => navigate('/doctor/alerts')}>
+                سجل التنبيهات <ArrowUpRight className="w-4 h-4 ml-1" />
+              </Button>
+            </div>
+            <CardDescription>الإشعارات التي تتطلب تدخلاً فورياً.</CardDescription>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="divide-y divide-border/50">
               {alerts.length === 0 ? (
-                <p className="text-center py-10 text-muted-foreground text-sm">لا توجد تنبيهات حالياً.</p>
+                <div className="py-12 text-center flex flex-col items-center justify-center">
+                  <div className="w-12 h-12 rounded-full bg-success/10 flex items-center justify-center mb-3">
+                    <CheckCircle className="w-6 h-6 text-success" />
+                  </div>
+                  <p className="text-muted-foreground font-medium">كل شيء مستقر</p>
+                  <p className="text-xs text-muted-foreground mt-1">لا توجد تنبيهات سريرية عاجلة.</p>
+                </div>
               ) : (
-                alerts.map((a) => (
-                  <div key={a.id} className={`p-4 flex items-start gap-3 ${a.severity === 'high' ? 'bg-destructive/5' : ''}`}>
-                    <div className={`mt-1 w-2 h-2 rounded-full shrink-0 ${a.severity === 'high' ? 'bg-destructive animate-pulse' : 'bg-warning'}`} />
+                alerts.slice(0, 5).map((a) => (
+                  <div key={a.id} className="p-5 flex items-start gap-4 hover:bg-muted/10 transition-colors">
+                    {/* Traffic Light Indicator */}
+                    <div className={`mt-1 w-2.5 h-2.5 rounded-full shrink-0 ${
+                      a.severity === 'high' ? 'bg-destructive animate-pulse shadow-[0_0_8px_rgba(220,38,38,0.6)]' : 
+                      a.severity === 'moderate' ? 'bg-warning' : 'bg-primary'
+                    }`} />
+                    
                     <div className="flex-1 min-w-0">
-                      <div className="flex justify-between items-start mb-1">
-                        <p className="font-bold text-sm truncate">{a.patientName}</p>
-                        <Badge variant={a.severity === 'high' ? 'destructive' : 'secondary'} className="text-[10px]">
-                          {a.severity === 'high' ? 'عاجل جداً' : 'متوسط'}
-                        </Badge>
+                      <div className="flex justify-between items-start mb-1.5">
+                        <p className="font-bold text-sm text-foreground">{a.patientName}</p>
+                        <span className="text-xs text-muted-foreground">{a.time || "حديث"}</span>
                       </div>
-                      <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">{a.message}</p>
-                      <div className="flex items-center gap-2 mt-2 text-[10px] text-muted-foreground">
-                        <Clock className="w-3 h-3" /> {a.time}
-                      </div>
+                      <p className="text-sm text-muted-foreground leading-relaxed pr-2 border-r-2 border-muted">
+                        {a.message}
+                      </p>
+                      
+                      {/* Actionable Insights */}
+                      {a.severity === 'high' && (
+                        <div className="mt-3">
+                           <Button size="sm" variant="destructive" className="h-8 text-xs" onClick={() => navigate('/doctor/chat')}>
+                             تواصل مع المريضة الآن
+                           </Button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))
@@ -173,3 +212,6 @@ export default function DoctorDashboard() {
     </div>
   );
 }
+
+// helper icon for empty state
+import { CheckCircle } from "lucide-react";

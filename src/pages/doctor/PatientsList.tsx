@@ -300,19 +300,12 @@ function PatientRecordDetails({ patient }: { patient: any }) {
 // ==========================================
 // الصفحة الرئيسية للقائمة
 // ==========================================
+import { useDoctorData } from "@/hooks/useDoctorData";
+
 export default function PatientsList() {
   const { user } = useAuthStore();
   const [search, setSearch] = useState("");
-  const [patients, setPatients] = useState<any[]>([]);
-
-  useEffect(() => {
-    if (!user) return;
-    const q = query(collection(db, "users"), where("role", "==", "patient"));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setPatients(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    });
-    return () => unsubscribe();
-  }, [user]);
+  const { patients, isLoading } = useDoctorData(user?.uid);
 
   const filtered = patients.filter((p) =>
     p.displayName?.toLowerCase().includes(search.toLowerCase())
@@ -322,73 +315,87 @@ export default function PatientsList() {
     <div className="space-y-6 animate-fade-in" dir="rtl">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-heading font-bold">المرضى</h1>
-          <p className="text-muted-foreground text-sm mt-1">عرض جميع المرضى المسجلين بالنظام ({patients.length})</p>
+          <h1 className="text-3xl font-heading font-bold text-foreground">المرضى</h1>
+          <p className="text-muted-foreground text-sm mt-1">عرض جميع المريضات المتابعات بعيادتك ({patients.length})</p>
         </div>
       </div>
 
-      <div className="relative max-w-sm">
-        <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input placeholder="ابحث عن مريض..." className="pr-10" value={search} onChange={(e) => setSearch(e.target.value)} />
+      <div className="flex items-center gap-4">
+        <div className="relative max-w-md w-full">
+          <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input placeholder="ابحث عن مريضة بالاسم..." className="pr-10 h-11" value={search} onChange={(e) => setSearch(e.target.value)} />
+        </div>
       </div>
 
-      <Card className="glass-card">
-        <CardHeader>
+      <Card className="glass-card shadow-sm border-transparent bg-white dark:bg-card">
+        <CardHeader className="border-b bg-muted/10 pb-4">
           <CardTitle className="font-heading text-lg flex items-center gap-2">
             <Users className="w-5 h-5 text-primary" /> قائمة المرضى
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm text-right">
-              <thead>
-                <tr className="border-b text-muted-foreground">
-                  <th className="py-3 px-3 font-medium">الاسم</th>
-                  <th className="py-3 px-3 font-medium">أسبوع الحمل</th>
-                  <th className="py-3 px-3 font-medium">مستوى الخطر</th>
-                  <th className="py-3 px-3 font-medium">الإجراءات</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="text-center py-6 text-muted-foreground">لا يوجد مرضى مطابقين.</td>
+            {isLoading ? (
+              <div className="flex justify-center items-center py-12">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              </div>
+            ) : (
+              <table className="w-full text-sm text-right">
+                <thead>
+                  <tr className="border-b text-muted-foreground bg-muted/20">
+                    <th className="py-4 px-6 font-medium">الاسم</th>
+                    <th className="py-4 px-6 font-medium">أسبوع الحمل</th>
+                    <th className="py-4 px-6 font-medium">مستوى الخطر</th>
+                    <th className="py-4 px-6 font-medium">الإجراءات</th>
                   </tr>
-                ) : (
-                  filtered.map((p) => (
-                    <tr key={p.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
-                      <td className="py-3 px-3 font-medium">{p.displayName || "بدون اسم"}</td>
-                      <td className="py-3 px-3">{p.week ? `الأسبوع ${p.week}` : "غير محدد"}</td>
-                      <td className="py-3 px-3">
-                        <RiskSelector patientId={p.id} currentRisk={p.riskLevel} />
-                      </td>
-                      <td className="py-3 px-3">
-                        <div className="flex gap-2">
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <Button variant="outline" size="sm" className="h-8 bg-primary/5 hover:bg-primary/10 border-primary/20 text-primary">
-                                <ClipboardList className="w-3.5 h-3.5 ml-1" /> الملف الطبي
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent dir="rtl" className="max-w-4xl max-h-[85vh] overflow-hidden flex flex-col">
-                              <DialogHeader className="shrink-0 border-b pb-3">
-                                <DialogTitle className="font-heading text-xl text-right flex items-center gap-2">
-                                  <Activity className="w-5 h-5 text-primary" />
-                                  الملف الطبي: {p.displayName}
-                                </DialogTitle>
-                              </DialogHeader>
-                              <div className="flex-1 overflow-hidden">
-                                <PatientRecordDetails patient={p} />
-                              </div>
-                            </DialogContent>
-                          </Dialog>
-                        </div>
+                </thead>
+                <tbody className="divide-y divide-border/50">
+                  {filtered.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="text-center py-12 text-muted-foreground">
+                        لا يوجد مرضى مطابقين.
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  ) : (
+                    filtered.map((p) => (
+                      <tr key={p.id} className="hover:bg-muted/10 transition-colors group">
+                        <td className="py-4 px-6 font-semibold text-foreground">
+                          {p.displayName || "بدون اسم"}
+                        </td>
+                        <td className="py-4 px-6 text-muted-foreground">
+                          {p.week ? `الأسبوع ${p.week}` : "-"}
+                        </td>
+                        <td className="py-4 px-6">
+                          <RiskSelector patientId={p.id} currentRisk={p.riskLevel} />
+                        </td>
+                        <td className="py-4 px-6">
+                          <div className="flex gap-2">
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <Button variant="outline" size="sm" className="h-8 hover:bg-primary hover:text-primary-foreground transition-colors shadow-sm">
+                                  <ClipboardList className="w-4 h-4 ml-2" /> عرض الملف
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent dir="rtl" className="max-w-5xl max-h-[90vh] overflow-hidden flex flex-col p-0">
+                                <DialogHeader className="shrink-0 border-b p-6 bg-muted/10">
+                                  <DialogTitle className="font-heading text-xl text-right flex items-center gap-2">
+                                    <Activity className="w-5 h-5 text-primary" />
+                                    الملف الطبي الشامل: {p.displayName}
+                                  </DialogTitle>
+                                </DialogHeader>
+                                <div className="flex-1 overflow-hidden p-6 bg-background">
+                                  <PatientRecordDetails patient={p} />
+                                </div>
+                              </DialogContent>
+                            </Dialog>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            )}
           </div>
         </CardContent>
       </Card>
