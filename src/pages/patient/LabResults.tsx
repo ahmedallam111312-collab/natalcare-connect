@@ -47,6 +47,7 @@ export default function LabResults() {
 
     setExtractedLabs([]);
 
+    try {
       // 1. تحويل الصورة إلى Base64
       setLoadingState("ai");
       toast.info("جاري تحليل النتائج بالذكاء الاصطناعي...");
