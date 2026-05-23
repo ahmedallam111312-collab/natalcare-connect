@@ -209,6 +209,38 @@ export default function DoctorDashboard() {
         </Card>
 
       </div>
+
+      {/* Today's Appointment Timeline */}
+      {appointments.filter(a => a.date === new Date().toISOString().split('T')[0]).length > 0 && (
+        <Card className="glass-card border-transparent shadow-sm bg-white dark:bg-card">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-xl font-heading flex items-center gap-2">
+              <CalendarDays className="w-5 h-5 text-primary" />
+              جدول مواعيد اليوم
+            </CardTitle>
+            <CardDescription>مواعيد المرضى المقررة لهذا اليوم</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {appointments
+                .filter(a => a.date === new Date().toISOString().split('T')[0])
+                .sort((a, b) => (a.time || '').localeCompare(b.time || ''))
+                .map((appt, i) => (
+                  <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-muted/30 border border-border/50 hover:border-primary/30 transition-colors">
+                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                      <span className="text-xs font-bold text-primary">{appt.time?.slice(0,5) || '--'}</span>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-semibold text-sm truncate">{appt.doctor || 'مريضة'}</p>
+                      <p className="text-xs text-muted-foreground">{appt.type || 'متابعة'}</p>
+                    </div>
+                  </div>
+                ))
+              }
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

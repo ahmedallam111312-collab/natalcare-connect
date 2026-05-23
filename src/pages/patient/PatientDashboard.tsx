@@ -310,27 +310,57 @@ export default function PatientDashboard() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-        {[
-          { icon: <Baby className="w-6 h-6 text-primary" />, bg: "bg-primary/10", label: "أسبوع الحمل", value: gestationalWeek, unit: "" },
-          { icon: <TrendingUp className="w-6 h-6 text-warning" />, bg: "bg-warning/10", label: "سكر الدم", value: latestVitals?.bloodSugar ?? "--", unit: "mg/dL" },
-          { icon: <CalendarDays className="w-6 h-6 text-accent" />, bg: "bg-accent/10", label: "الوزن", value: latestVitals?.weight ?? "--", unit: "كجم" },
-        ].map((s, i) => (
-          <Card key={i} className="glass-card hover:shadow-lg transition-shadow border-transparent bg-white dark:bg-card">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-4">
-                <div className={`w-14 h-14 rounded-full ${s.bg} flex items-center justify-center shrink-0`}>
-                  {s.icon}
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground mb-1">{s.label}</p>
-                  <p className="text-3xl font-heading font-bold text-foreground" dir={s.ltr ? "ltr" : undefined}>
-                    {s.value} {s.unit && <span className="text-sm font-normal text-muted-foreground ml-1">{s.unit}</span>}
-                  </p>
-                </div>
+        {/* Card 1: أسبوع الحمل */}
+        <Card className="glass-card hover:shadow-lg transition-shadow border-transparent bg-white dark:bg-card">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                <Baby className="w-6 h-6 text-primary" />
               </div>
-            </CardContent>
-          </Card>
-        ))}
+              <div>
+                <p className="text-sm font-medium text-muted-foreground mb-1">أسبوع الحمل</p>
+                <p className="text-3xl font-heading font-bold text-foreground">{gestationalWeek}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Card 2: موعد الزيارة القادمة */}
+        <Card className="glass-card hover:shadow-lg transition-shadow border-transparent bg-white dark:bg-card">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-full bg-accent/10 flex items-center justify-center shrink-0">
+                <CalendarDays className="w-6 h-6 text-accent" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground mb-1">موعد الزيارة القادمة</p>
+                <p className="text-lg font-heading font-bold text-foreground leading-tight">
+                  {upcomingAppts[0]?.date
+                    ? formatArabicDate(upcomingAppts[0].date)
+                    : "لا يوجد موعد"}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Card 3: الوزن */}
+        <Card className="glass-card hover:shadow-lg transition-shadow border-transparent bg-white dark:bg-card">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-full bg-warning/10 flex items-center justify-center shrink-0">
+                <TrendingUp className="w-6 h-6 text-warning" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground mb-1">الوزن</p>
+                <p className="text-3xl font-heading font-bold text-foreground">
+                  {latestVitals?.weight ?? "--"}{" "}
+                  <span className="text-sm font-normal text-muted-foreground ml-1">كجم</span>
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
