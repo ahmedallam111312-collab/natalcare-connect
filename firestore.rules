@@ -98,6 +98,11 @@ service cloud.firestore {
       allow read: if isStaff();
     }
     
+    // Allow querying the code without being logged in
+    match /{path=**}/partnerAccess/{document=**} {
+      allow read: if true;
+    }
+    
     match /{document=**} {
       allow read, write: if false;
     }

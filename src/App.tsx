@@ -56,6 +56,8 @@ import NutritionTracker from "@/pages/patient/NutritionTracker";
 import MentalHealthTracker from "@/pages/patient/MentalHealthTracker";
 import PartnerAccess from "@/pages/patient/PartnerAccess";
 import DoctorPrescriptions from "@/pages/doctor/DoctorPrescriptions";
+import PartnerLayout from "@/layouts/PartnerLayout";
+import PartnerDashboard from "@/pages/partner/PartnerDashboard";
 
 const queryClient = new QueryClient();
 
@@ -114,6 +116,10 @@ const AnimatedRoutes = () => {
           <Route path="doctors" element={<PageTransition><ManageDoctors /></PageTransition>} />
           <Route path="lab-categories" element={<PageTransition><ManageLabCategories /></PageTransition>} />
           <Route path="settings" element={<PageTransition><AdminSettings /></PageTransition>} />
+        </Route>
+
+        <Route path="/partner" element={<ProtectedRoute allowedRoles={["partner"]}><PartnerLayout /></ProtectedRoute>}>
+          <Route index element={<PageTransition><PartnerDashboard /></PageTransition>} />
         </Route>
         
         <Route path="*" element={<PageTransition><NotFound /></PageTransition>} />
