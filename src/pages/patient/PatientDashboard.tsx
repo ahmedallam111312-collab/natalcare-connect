@@ -309,10 +309,9 @@ export default function PatientDashboard() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
         {[
           { icon: <Baby className="w-6 h-6 text-primary" />, bg: "bg-primary/10", label: "أسبوع الحمل", value: gestationalWeek, unit: "" },
-          { icon: <Activity className="w-6 h-6 text-success" />, bg: "bg-success/10", label: "ضغط الدم", value: latestVitals ? `${latestVitals.bloodPressureSystolic}/${latestVitals.bloodPressureDiastolic}` : "--/--", unit: "", ltr: true },
           { icon: <TrendingUp className="w-6 h-6 text-warning" />, bg: "bg-warning/10", label: "سكر الدم", value: latestVitals?.bloodSugar ?? "--", unit: "mg/dL" },
           { icon: <CalendarDays className="w-6 h-6 text-accent" />, bg: "bg-accent/10", label: "الوزن", value: latestVitals?.weight ?? "--", unit: "كجم" },
         ].map((s, i) => (
