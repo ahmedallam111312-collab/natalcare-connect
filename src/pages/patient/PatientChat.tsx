@@ -130,7 +130,7 @@ export default function PatientChat() {
                   <p className="text-center text-muted-foreground text-sm mt-10">ابدئي المحادثة الآن مع طبيبك..</p>
                 )}
                 {messages.map((msg) => (
-                  <div key={msg.id} className={`flex ${msg.senderId === user?.uid ? "justify-start" : "justify-end"}`}>
+                  <div key={msg.id} className={`flex w-full ${msg.senderId === user?.uid ? "justify-start" : "justify-end"}`}>
                     <div className={`max-w-[80%] p-3 text-sm shadow-sm ${
                       msg.senderId === user?.uid 
                         ? "bg-primary text-primary-foreground rounded-2xl rounded-tr-sm" 

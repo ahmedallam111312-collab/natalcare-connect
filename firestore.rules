@@ -45,8 +45,7 @@ service cloud.firestore {
     }
     
     match /chats/{chatId}/messages/{messageId} {
-      // allow read/write if the user's uid is part of the chatId
-      allow read, write: if isAuthenticated() && chatId.matches('.*' + request.auth.uid + '.*');
+      allow read, write: if isAuthenticated();
     }
     
     match /alerts/{alertId} {

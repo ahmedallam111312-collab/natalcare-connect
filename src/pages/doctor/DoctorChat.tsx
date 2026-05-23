@@ -74,7 +74,7 @@ function PatientRow({ patient, isSelected, unreadCount, onClick }: { patient: Pa
 function MessageBubble({ message, isOwn, patientName, isLastInGroup }: { message: Message; isOwn: boolean; patientName?: string; isLastInGroup: boolean }) {
   const time = formatTime(message.createdAt);
   return (
-    <div className={`flex flex-col ${isOwn ? "items-start" : "items-end"} gap-0.5`}>
+    <div className={`flex flex-col w-full ${isOwn ? "items-start" : "items-end"} gap-0.5`}>
       <div className={`flex items-end gap-1.5 ${isOwn ? "flex-row" : "flex-row-reverse"}`}>
         {!isOwn && isLastInGroup ? <Avatar name={patientName} size="sm" /> : !isOwn ? <div className="w-8 shrink-0" /> : null}
         <div className={["max-w-[72%] px-4 py-2.5 text-sm leading-relaxed shadow-sm break-words", isOwn ? "bg-primary text-primary-foreground rounded-2xl rounded-tr-sm" : "bg-card text-card-foreground border border-border rounded-2xl rounded-tl-sm"].join(" ")}>
