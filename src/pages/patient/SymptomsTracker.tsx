@@ -60,7 +60,7 @@ export default function SymptomsTracker() {
     3. الرد يجب ألا يتجاوز 10 كلمات باللغة العربية.`;
 
     try {
-      let raw = await sendSymptomChat(chatCopy);
+      const raw = await sendSymptomChat(chatCopy);
       // تنظيف الرد من النجمات أو علامات التنصيص إن وجدت
       return raw.replace(/[*"]/g, '').trim();
     } catch (e) {
@@ -85,7 +85,7 @@ export default function SymptomsTracker() {
           اكتب ملخصاً طبياً قصيراً جداً (سطر واحد فقط) ليرسل كإشعار للطبيب المعالج.`
         }
       ];
-      let response = await sendSymptomChat(reportPrompt);
+      const response = await sendSymptomChat(reportPrompt);
       return response.replace(/[*"]/g, '').trim();
     } catch {
       return `المريضة تشتكي من: ${data.join("، ")}`;
